@@ -1,0 +1,170 @@
+{
+  "description": "Synthetic Notion database query response, shaped like the payload workflows 03, 05 and 06 receive. Entirely fictional. No real person, company or URL. Rich text objects carry only plain_text because that is the only field Scout reads. Page ids are obviously fake rather than real Notion UUIDs. The list deliberately includes two rows the live Notion filter would have excluded (an Ignore row and a Closed row) so the workflows' own guards are exercised, and one row whose name and URL are hostile so HTML escaping is exercised. Dates are chosen relative to 2026-08-26T12:00:00Z.",
+  "object": "list",
+  "has_more": false,
+  "next_cursor": null,
+  "results": [
+    {
+      "object": "page",
+      "id": "page-001",
+      "created_time": "2026-08-24T09:00:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "northstar_ops" }] },
+        "Company": { "rich_text": [{ "plain_text": "Northstar Systems" }] },
+        "Signal": {
+          "rich_text": [
+            { "plain_text": "Duplicate companies keep reappearing after our lifecycle stage sync" }
+          ]
+        },
+        "Evidence": { "rich_text": [{ "plain_text": "Board: RevOps & Data Hub" }] },
+        "Warmth tier": { "select": { "name": "Tier 1 (hot)" } },
+        "Pain area": { "multi_select": [{ "name": "Dedupe" }, { "name": "Lifecycle" }] },
+        "Best angle": {
+          "rich_text": [
+            {
+              "plain_text": "Is the duplicate created before or after the lifecycle stage automation fires?"
+            }
+          ]
+        },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "ICP practitioner" } },
+        "Track": { "select": { "name": "Sales (ICP)" } },
+        "Source": { "select": { "name": "HubSpot Community" } },
+        "Source URL": { "url": "https://example.com/community/post-001" },
+        "LinkedIn URL": { "url": null },
+        "Next action": { "select": { "name": "DM" } },
+        "Status": { "select": { "name": "Engaged" } },
+        "Replied": { "checkbox": false },
+        "Last touch": { "date": { "start": "2026-08-16" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-002",
+      "created_time": "2026-08-25T14:30:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "casual_user" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Asked about a keyboard shortcut" }] },
+        "Warmth tier": { "select": { "name": "Tier 3 (cool)" } },
+        "Pain area": { "multi_select": [] },
+        "Best angle": { "rich_text": [] },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "Peer / networker" } },
+        "Track": { "select": { "name": "Connector" } },
+        "Source": { "select": { "name": "HubSpot Community" } },
+        "Source URL": { "url": "https://example.com/community/post-002" },
+        "Next action": { "select": { "name": "Comment" } },
+        "Status": { "select": { "name": "New" } },
+        "Replied": { "checkbox": false },
+        "Last touch": { "date": { "start": "2026-08-25" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-003",
+      "created_time": "2026-08-01T08:00:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "ops_lead" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Reporting rebuild stalled on attribution" }] },
+        "Warmth tier": { "select": { "name": "Tier 2 (warm)" } },
+        "Pain area": { "multi_select": [{ "name": "Reporting" }] },
+        "Best angle": { "rich_text": [{ "plain_text": "Which report broke first?" }] },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "ICP buyer" } },
+        "Track": { "select": { "name": "Sales (ICP)" } },
+        "Source": { "select": { "name": "Referral" } },
+        "Source URL": { "url": null },
+        "Next action": { "select": { "name": "Monitor" } },
+        "Status": { "select": { "name": "In conversation" } },
+        "Replied": { "checkbox": false },
+        "Last touch": { "date": { "start": "2026-08-01" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-004",
+      "created_time": "2026-08-24T18:45:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "Ops & \"Data\" <team> won't wait" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Enrichment job overwrites manual edits" }] },
+        "Warmth tier": { "select": { "name": "Tier 1 (hot)" } },
+        "Pain area": { "multi_select": [{ "name": "Enrichment" }] },
+        "Best angle": {
+          "rich_text": [{ "plain_text": "<b>Which</b> source wins when both write?" }]
+        },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "ICP practitioner" } },
+        "Track": { "select": { "name": "Sales (ICP)" } },
+        "Source": { "select": { "name": "Reddit" } },
+        "Source URL": { "url": "javascript:alert(1)" },
+        "Next action": { "select": { "name": "Connect" } },
+        "Status": { "select": { "name": "New" } },
+        "Replied": { "checkbox": false },
+        "Last touch": { "date": { "start": "2026-08-10" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-005",
+      "created_time": "2026-07-01T10:00:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "not_a_fit" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Unrelated product question" }] },
+        "Warmth tier": { "select": { "name": "Tier 4 (cold)" } },
+        "Pain area": { "multi_select": [] },
+        "Best angle": { "rich_text": [] },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "Unknown" } },
+        "Track": { "select": { "name": "Unknown" } },
+        "Source": { "select": { "name": "HubSpot Community" } },
+        "Source URL": { "url": "https://example.com/community/post-005" },
+        "Next action": { "select": { "name": "Ignore" } },
+        "Status": { "select": { "name": "New" } },
+        "Replied": { "checkbox": false },
+        "Last touch": { "date": { "start": "2026-07-01" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-006",
+      "created_time": "2026-07-01T11:00:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "already_handled" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Routing question, resolved months ago" }] },
+        "Warmth tier": { "select": { "name": "Tier 3 (cool)" } },
+        "Pain area": { "multi_select": [{ "name": "Routing" }] },
+        "Best angle": { "rich_text": [{ "plain_text": "Already answered" }] },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "ICP practitioner" } },
+        "Track": { "select": { "name": "Sales (ICP)" } },
+        "Source": { "select": { "name": "HubSpot Community" } },
+        "Source URL": { "url": "https://example.com/community/post-006" },
+        "Next action": { "select": { "name": "DM" } },
+        "Status": { "select": { "name": "Closed" } },
+        "Replied": { "checkbox": true },
+        "Last touch": { "date": { "start": "2026-07-01" } }
+      }
+    },
+    {
+      "object": "page",
+      "id": "page-007",
+      "created_time": "2026-08-23T16:20:00.000Z",
+      "properties": {
+        "Name": { "title": [{ "plain_text": "renewal_owner" }] },
+        "Signal": { "rich_text": [{ "plain_text": "Renewal pipeline splits across two objects" }] },
+        "Warmth tier": { "select": { "name": "Tier 2 (warm)" } },
+        "Pain area": { "multi_select": [{ "name": "Data quality" }] },
+        "Best angle": { "rich_text": [{ "plain_text": "Where does the renewal record live today?" }] },
+        "Draft": { "rich_text": [] },
+        "Persona type": { "select": { "name": "ICP buyer" } },
+        "Track": { "select": { "name": "Sales (ICP)" } },
+        "Source": { "select": { "name": "Partner directory" } },
+        "Source URL": { "url": "https://example.com/community/post-007" },
+        "Next action": { "select": { "name": "DM" } },
+        "Status": { "select": { "name": "Scan/Demo" } },
+        "Replied": { "checkbox": true },
+        "Last touch": { "date": { "start": "2026-08-22" } }
+      }
+    }
+  ]
+}

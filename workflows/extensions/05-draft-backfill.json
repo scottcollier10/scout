@@ -1,0 +1,407 @@
+{
+  "name": "Scout 05 | Draft Backfill",
+  "nodes": [
+    {
+      "id": "baa59e84-57ce-594d-81c8-34722dd0ae24",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "06922256-c08f-59c6-9121-31728331c5c5",
+      "name": "Scout Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "782ac880-bd1d-5ab5-a206-bfdd4ea0cd73",
+              "name": "notionDatabaseId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "f267c5c7-60bb-53b9-b7ab-4a6371869e43",
+              "name": "anthropicModel",
+              "value": "claude-haiku-4-5-20251001",
+              "type": "string"
+            },
+            {
+              "id": "59a5e39a-fe72-53b8-90be-baba78912bc5",
+              "name": "batchSize",
+              "value": 5,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "522f84b5-3baa-57f1-9bed-15629f4f7ff2",
+      "name": "Validate Setup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// VALIDATE SCOUT SETUP\n// Stops the run before the Notion query, and therefore before any Anthropic\n// request, when configuration is missing or out of range.\nconst cfg = $('Scout Setup').first().json;\nconst problems = [];\n\nconst databaseId = (cfg.notionDatabaseId || '').toString().trim();\nif (!databaseId) {\n  problems.push('notionDatabaseId is empty. Paste the id of your Notion signal map database.');\n}\n\nconst model = (cfg.anthropicModel || '').toString().trim();\nif (!model) {\n  problems.push('anthropicModel is empty. Set the Anthropic model id to draft with.');\n}\n\n// One model call per row, so the batch size is also the per-run spend ceiling.\nconst batchSize = Number(cfg.batchSize);\nif (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 50) {\n  problems.push('batchSize must be a whole number from 1 to 50.');\n}\n\nif (problems.length > 0) {\n  throw new Error('Scout Setup is not configured correctly. ' + problems.join(' '));\n}\n\nreturn [{ json: { validated: true, batchSize } }];"
+      }
+    },
+    {
+      "id": "cfbdaec2-2ccf-5432-9d1f-6381bd36d68c",
+      "name": "Query Rows Missing Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $('Scout Setup').first().json.notionDatabaseId }}/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filter: { and: [ { property: 'Draft', rich_text: { is_empty: true } }, { property: 'Status', select: { does_not_equal: 'Closed' } }, { property: 'Next action', select: { is_not_empty: true } } ] }, page_size: $('Scout Setup').first().json.batchSize }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "9978fb84-b6c8-55bc-a68c-7927832f002e",
+      "name": "Prep Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// PREP ROWS FOR DRAFTING\n// One Anthropic request per row whose next action is something a human would\n// actually write. Monitor and Ignore rows never need a draft, so they are\n// skipped here rather than filtered in Notion.\nconst cfg = $('Scout Setup').first().json;\nconst model = (cfg.anthropicModel || '').toString().trim();\nconst batchSize = Number(cfg.batchSize);\n\nconst DRAFTABLE_ACTIONS = ['Comment', 'DM', 'Connect'];\n\nconst SYSTEM = [\n  'You draft short outreach for a HubSpot data and automation consultancy.',\n  'Voice: peer operator, diagnostic, never pitchy. No emojis, no hashtags, no links.',\n  'You are given a SIGNAL describing someone\\'s HubSpot pain, and an ACTION. Write exactly one message:',\n  '- ACTION Comment: two or three sentences of public reply that add a diagnostic distinction, name a hidden cost, or ask an operator-level question. No pitch.',\n  '- ACTION DM: a low-friction direct message that references their issue and asks ONE diagnostic question. Do not ask for a call or a meeting.',\n  '- ACTION Connect: a single warm sentence referencing the shared topic.',\n  'Return ONLY the message text. No preamble, no surrounding quotes, under 90 words.'\n].join('\\n');\n\nfunction props(page) { return (page && page.properties) || {}; }\nfunction sel(page, key) { const v = props(page)[key]; return (v && v.select && v.select.name) || ''; }\nfunction textOf(page, key) {\n  const v = props(page)[key];\n  return ((v && v.rich_text) || []).map((x) => x.plain_text || '').join('');\n}\nfunction multiOf(page, key) {\n  const v = props(page)[key];\n  return ((v && v.multi_select) || []).map((x) => x.name).join(', ');\n}\nfunction titleOf(page) {\n  const t = (props(page).Name && props(page).Name.title) || [];\n  return t.map((x) => x.plain_text || '').join('');\n}\n\nlet pages = [];\ntry { pages = $input.first().json.results || []; } catch (e) { pages = []; }\n\nconst out = [];\n\nfor (const page of pages) {\n  if (out.length >= batchSize) break;\n  const action = sel(page, 'Next action');\n  if (!DRAFTABLE_ACTIONS.includes(action)) continue;\n  if (!page.id) continue;\n\n  const userContent = [\n    'ACTION: ' + action,\n    'SIGNAL: ' + textOf(page, 'Signal'),\n    'BEST ANGLE: ' + textOf(page, 'Best angle'),\n    'PAIN AREA: ' + multiOf(page, 'Pain area'),\n    'PERSON: ' + titleOf(page)\n  ].join('\\n');\n\n  out.push({ json: {\n    pageId: page.id,\n    action,\n    name: titleOf(page),\n    _anthropicBody: {\n      model,\n      max_tokens: 300,\n      system: SYSTEM,\n      messages: [{ role: 'user', content: userContent }]\n    }\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "2613d234-3e97-5d26-abf8-c2dbf078170c",
+      "name": "Draft (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._anthropicBody) }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "c40da953-b894-5a8d-9007-a31d1db6ea6b",
+      "name": "Build Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// BUILD THE NOTION PATCH\n// Pairs each Anthropic response with its row by index. A response Scout cannot\n// read is not an error and is not a silent drop: the row is left exactly as it\n// was and the run emits a \"Needs review\" item naming the page, so the operator\n// can see what failed without the workflow inventing text.\nconst sources = $('Prep Rows').all();\nconst inputs = $input.all();\nconst out = [];\n\nfor (let i = 0; i < inputs.length; i++) {\n  const src = (sources[i] && sources[i].json) || {};\n  const response = inputs[i].json || {};\n\n  let text = '';\n  try { text = (response.content || []).map((c) => c.text || '').join('').trim(); }\n  catch (e) { text = ''; }\n\n  if (!src.pageId) continue;\n\n  if (!text) {\n    out.push({ json: {\n      draftReady: false,\n      status: 'Needs review',\n      pageId: src.pageId,\n      name: src.name,\n      action: src.action,\n      reason: 'The model returned no usable text. The Notion row was left unchanged.'\n    }});\n    continue;\n  }\n\n  out.push({ json: {\n    draftReady: true,\n    pageId: src.pageId,\n    name: src.name,\n    action: src.action,\n    _url: 'https://api.notion.com/v1/pages/' + src.pageId,\n    _notionBody: { properties: { 'Draft': { rich_text: [{ text: { content: text.slice(0, 1900) } }] } } }\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "0ed15616-fcb4-5849-a3d7-53ea9eaa9073",
+      "name": "Draft Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "draft-text-present",
+              "leftValue": "={{ $json.draftReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "161aa18f-032c-57c0-82b0-2e32043952d6",
+      "name": "Write Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -100
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json._url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._notionBody) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "3c74601e-ea1b-5613-81de-37d25c6edea0",
+      "name": "Needs Review",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        120
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "dbe3d90e-4fc2-58e0-90b6-10b28f667be9",
+      "name": "What this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -420
+      ],
+      "parameters": {
+        "content": "## Draft backfill\n\nAn extension, not part of the core loop.\n\nRows can reach your signal map without a draft: you added them by hand,\nthe classifier had nothing useful to say, or engagement sync created\nthem. Once a day this workflow finds open rows that have a next action\nbut an empty **Draft**, and fills it in.\n\nOnly **Comment**, **DM** and **Connect** rows get a draft. Nothing is\nsent. Every draft is a suggestion sitting in Notion for you to edit,\napprove or delete.",
+        "width": 640,
+        "height": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "ee3eab19-dea7-5cc1-9dd5-958f7b087634",
+      "name": "Configure before running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -420
+      ],
+      "parameters": {
+        "content": "## Configure before running\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Draft (Claude)** and a Notion\n   credential on **Query Rows Missing Draft** and **Write Draft**.\n3. Set **batchSize**. It must be a whole number from 1 to 50.\n\n**batchSize is your spend ceiling.** It caps both the Notion page size\nand the number of model calls per run, so one run costs at most that\nmany requests.\n\nThis workflow ships with its timezone set to **UTC**. Change the\nworkflow timezone before you activate the schedule.",
+        "width": 640,
+        "height": 360,
+        "color": 5
+      }
+    },
+    {
+      "id": "2339f915-880c-5889-9a87-19558fe04ed2",
+      "name": "When the model misbehaves",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -420
+      ],
+      "parameters": {
+        "content": "## When the model misbehaves\n\nIf a response comes back empty or unreadable, **Build Patch** marks the\nitem `draftReady: false` and **Draft Ready?** routes it to\n**Needs Review**.\n\nThat path writes nothing. The Notion row keeps its empty **Draft** and\nis picked up again on the next run. Scout never invents text to fill a\ngap, and never silently skips a row without recording why.\n\nOpen the execution to see which rows needed review and the reason.",
+        "width": 640,
+        "height": 360,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scout Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Setup": {
+      "main": [
+        [
+          {
+            "node": "Validate Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Setup": {
+      "main": [
+        [
+          {
+            "node": "Query Rows Missing Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Rows Missing Draft": {
+      "main": [
+        [
+          {
+            "node": "Prep Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Rows": {
+      "main": [
+        [
+          {
+            "node": "Draft (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Build Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Patch": {
+      "main": [
+        [
+          {
+            "node": "Draft Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Ready?": {
+      "main": [
+        [
+          {
+            "node": "Write Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  },
+  "pinData": {},
+  "tags": []
+}

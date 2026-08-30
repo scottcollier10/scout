@@ -1,0 +1,15 @@
+{
+  "description": "Synthetic Anthropic Messages API response for a post that is not a RevOps signal. Scout drops these without writing to Notion.",
+  "id": "msg_synthetic_irrelevant_fixture",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 208, "output_tokens": 44 },
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"relevant\":false,\"warmth_tier\":\"Tier 4 (cold)\",\"pain_areas\":[],\"best_angle\":\"\",\"draft_comment\":\"\",\"persona_type\":\"Unknown\",\"track\":\"Unknown\"}"
+    }
+  ]
+}

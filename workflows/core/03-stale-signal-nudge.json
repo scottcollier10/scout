@@ -1,0 +1,323 @@
+{
+  "name": "Scout 03 | Stale Signal Nudge",
+  "nodes": [
+    {
+      "id": "cfd48de0-b6b7-53bd-8b8d-102aed15ad8b",
+      "name": "Weekday Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "78e194b9-1d16-5ec7-b59c-34a4aee3e3a3",
+      "name": "Scout Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fc8e1158-60a0-579c-8f76-67ad757ec6aa",
+              "name": "notionDatabaseId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "82682df6-d81b-5151-898a-f21cd3ae461c",
+              "name": "recipientEmail",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "c4b79e3b-7dcf-5a6d-9e71-2dd6a0b7d66a",
+              "name": "staleDaysByAction",
+              "value": {
+                "DM": 4,
+                "Comment": 5,
+                "Connect": 6,
+                "Monitor": 14,
+                "default": 7
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "acc2eee7-5797-519c-9d3f-fffe1a5759a0",
+      "name": "Validate Setup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// VALIDATE SCOUT SETUP\n// Stops the run before the Notion query or the email when configuration is\n// missing or out of range. Each message names the exact Scout Setup field.\nconst cfg = $('Scout Setup').first().json;\nconst problems = [];\n\nconst databaseId = (cfg.notionDatabaseId || '').toString().trim();\nif (!databaseId) {\n  problems.push('notionDatabaseId is empty. Paste the id of your Notion signal map database.');\n}\n\n// Deliberately conservative: enough to catch an empty or obviously malformed\n// value before Gmail is asked to send. Full RFC address validation is not the\n// job of a workflow.\nconst recipient = (cfg.recipientEmail || '').toString().trim();\nif (!recipient) {\n  problems.push('recipientEmail is empty. Set the address that should receive the nudge.');\n} else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@.]{2,}$/.test(recipient)) {\n  problems.push('recipientEmail does not look like an email address.');\n}\n\nconst REQUIRED_WINDOWS = ['DM', 'Comment', 'Connect', 'Monitor', 'default'];\nconst windows = (cfg.staleDaysByAction && typeof cfg.staleDaysByAction === 'object')\n  ? cfg.staleDaysByAction\n  : null;\n\nif (!windows) {\n  problems.push('staleDaysByAction must be an object of follow-up windows in days.');\n} else {\n  for (const key of REQUIRED_WINDOWS) {\n    const days = Number(windows[key]);\n    if (!Number.isInteger(days) || days < 1 || days > 90) {\n      problems.push('staleDaysByAction.' + key + ' must be a whole number of days from 1 to 90.');\n    }\n  }\n}\n\nif (problems.length > 0) {\n  throw new Error('Scout Setup is not configured correctly. ' + problems.join(' '));\n}\n\nreturn [{ json: { validated: true } }];"
+      }
+    },
+    {
+      "id": "b492bcb3-a488-59d4-a93a-7508f58c12e0",
+      "name": "Query Open Signals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $('Scout Setup').first().json.notionDatabaseId }}/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filter: { and: [ { property: 'Status', select: { does_not_equal: 'Closed' } }, { property: 'Next action', select: { does_not_equal: 'Ignore' } } ] }, page_size: 100 }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "d2959084-cd55-5227-a1d3-ed2d3fee6be4",
+      "name": "Compute Stale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// FLAG STALE SIGNALS AND BUILD THE DIGEST\n// A row is stale when it is still open and its last activity is older than the\n// follow-up window configured for its next action. Rows are grouped by action\n// and sorted hottest tier first, then longest stale.\nconst cfg = $('Scout Setup').first().json;\nconst windows = cfg.staleDaysByAction || {};\nconst fallbackDays = Number(windows.default);\nconst nowMs = +$now;\n\n// Parses an absolute http(s) URL without the `URL` global, which n8n's Code\n// node sandbox does not provide. Returns null for anything it will not vouch\n// for, so every caller can treat null as \"refuse this value\".\nfunction parseHttpUrl(value) {\n  const raw = (value === null || value === undefined ? '' : String(value)).trim();\n  if (!raw) return null;\n\n  // No spaces, tabs, newlines or control characters anywhere. A URL carrying\n  // one is either malformed or an attempt to hide a second value inside the\n  // first, and neither is worth guessing about.\n  for (let i = 0; i < raw.length; i++) {\n    const code = raw.charCodeAt(i);\n    if (code <= 0x20 || code === 0x7f) return null;\n  }\n\n  // Backslashes are rejected rather than normalised. Browsers treat a\n  // backslash as \"/\", so an authority written with one can read as a hostile\n  // host in a browser and a trusted host in a naive parser. Scout refuses the\n  // ambiguity instead of picking a side.\n  if (raw.indexOf('\\\\') !== -1) return null;\n\n  const parts = /^([A-Za-z][A-Za-z0-9+.-]*):\\/\\/([^/?#]*)([^?#]*)(\\?[^#]*)?(#[\\s\\S]*)?$/.exec(raw);\n  if (!parts) return null;\n\n  const protocol = parts[1].toLowerCase() + ':';\n  if (protocol !== 'http:' && protocol !== 'https:') return null;\n\n  const authority = parts[2];\n  if (!authority) return null;\n\n  // Split user information off the authority. Scout never sends credentials in\n  // a URL, but workflow 01 has to be able to see that someone tried.\n  let username = '';\n  let password = '';\n  let hostport = authority;\n  const at = authority.lastIndexOf('@');\n  if (at !== -1) {\n    const userinfo = authority.slice(0, at);\n    if (!userinfo) return null;\n    hostport = authority.slice(at + 1);\n    const sep = userinfo.indexOf(':');\n    username = sep === -1 ? userinfo : userinfo.slice(0, sep);\n    password = sep === -1 ? '' : userinfo.slice(sep + 1);\n  }\n  if (!hostport) return null;\n\n  // Separate an optional port so it can never be mistaken for part of the host.\n  let hostname = hostport;\n  let port = '';\n  if (hostport.charAt(0) === '[') {\n    const close = hostport.indexOf(']');\n    if (close === -1) return null;\n    hostname = hostport.slice(0, close + 1);\n    const rest = hostport.slice(close + 1);\n    if (rest) {\n      if (rest.charAt(0) !== ':') return null;\n      port = rest.slice(1);\n    }\n  } else {\n    const sep = hostport.indexOf(':');\n    if (sep !== -1) {\n      hostname = hostport.slice(0, sep);\n      port = hostport.slice(sep + 1);\n    }\n    // Only ASCII hosts are accepted. An internationalised name would need\n    // punycode conversion to compare safely, and Scout has no need of one.\n    if (!/^[A-Za-z0-9._~%-]+$/.test(hostname)) return null;\n  }\n  if (!hostname) return null;\n  if (port && !/^[0-9]+$/.test(port)) return null;\n\n  const pathname = parts[3] || '/';\n  const search = parts[4] || '';\n  const hash = parts[5] || '';\n  const host = port ? hostname + ':' + port : hostname;\n  const href = protocol + '//' + host + pathname + search + hash;\n\n  return {\n    protocol: protocol,\n    username: username,\n    password: password,\n    hostname: hostname,\n    port: port,\n    host: host,\n    pathname: pathname,\n    search: search,\n    hash: hash,\n    href: href,\n    toString: function () { return href; }\n  };\n}\n\n// Everything interpolated into the email below is user-controlled data that\n// arrived from Notion, so it is escaped before it reaches the HTML.\nfunction escapeHtml(value) {\n  return (value === null || value === undefined ? '' : String(value))\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\n// Only http(s) links become anchors. Anything else is rendered as plain text\n// so a hostile value cannot smuggle a script URL into the operator's inbox.\nfunction safeHref(value) {\n  const parsed = parseHttpUrl(value);\n  if (!parsed) return '';\n  return escapeHtml(parsed.href);\n}\n\nfunction props(page) { return (page && page.properties) || {}; }\nfunction sel(page, key) { const v = props(page)[key]; return (v && v.select && v.select.name) || ''; }\nfunction dateOf(page, key) { const v = props(page)[key]; return (v && v.date && v.date.start) || ''; }\nfunction urlOf(page, key) { const v = props(page)[key]; return (v && v.url) || ''; }\nfunction textOf(page, key) {\n  const v = props(page)[key];\n  return ((v && v.rich_text) || []).map((x) => x.plain_text || '').join('');\n}\nfunction titleOf(page) {\n  const t = (props(page).Name && props(page).Name.title) || [];\n  return t.map((x) => x.plain_text || '').join('') || '(untitled)';\n}\n\nlet pages = [];\ntry { pages = $input.first().json.results || []; } catch (e) { pages = []; }\n\nconst stale = [];\n\nfor (const page of pages) {\n  const action = sel(page, 'Next action');\n  if (!action || action === 'Ignore') continue;\n  if (sel(page, 'Status') === 'Closed') continue;\n\n  // Never touched rows fall back to Notion's page creation time, so a brand new\n  // row still ages instead of being invisible forever.\n  const reference = dateOf(page, 'Last touch') || page.created_time || '';\n  if (!reference) continue;\n\n  const referenceMs = new Date(reference).getTime();\n  if (!Number.isFinite(referenceMs)) continue;\n\n  const days = Math.floor((nowMs - referenceMs) / 86400000);\n  const threshold = Number.isInteger(Number(windows[action])) ? Number(windows[action]) : fallbackDays;\n  if (days < threshold) continue;\n\n  stale.push({\n    name: titleOf(page),\n    action,\n    tier: sel(page, 'Warmth tier'),\n    days,\n    threshold,\n    url: urlOf(page, 'Source URL') || urlOf(page, 'LinkedIn URL'),\n    angle: textOf(page, 'Best angle')\n  });\n}\n\nconst TIER_RANK = { 'Tier 1 (hot)': 0, 'Tier 2 (warm)': 1, 'Tier 3 (cool)': 2, 'Tier 4 (cold)': 3 };\nstale.sort((a, b) => {\n  const rank = (TIER_RANK[a.tier] === undefined ? 9 : TIER_RANK[a.tier]) -\n    (TIER_RANK[b.tier] === undefined ? 9 : TIER_RANK[b.tier]);\n  return rank !== 0 ? rank : b.days - a.days;\n});\n\nconst staleCount = stale.length;\n\nconst byAction = {};\nfor (const row of stale) {\n  if (!byAction[row.action]) byAction[row.action] = [];\n  byAction[row.action].push(row);\n}\n\nfunction rowHtml(row) {\n  const href = safeHref(row.url);\n  const label = escapeHtml(row.name);\n  const who = href ? '<a href=\"' + href + '\">' + label + '</a>' : label;\n  return '<tr><td>' + who + '</td><td>' + escapeHtml(row.tier) + '</td>' +\n    '<td style=\"text-align:right\">' + escapeHtml(row.days) + 'd</td>' +\n    '<td style=\"color:#666\">' + escapeHtml(row.angle) + '</td></tr>';\n}\n\nlet sections = '';\nfor (const action of Object.keys(byAction)) {\n  sections += '<h3 style=\"margin:18px 0 4px\">' + escapeHtml(action) + ' &mdash; ' + byAction[action].length + '</h3>' +\n    '<table style=\"border-collapse:collapse;width:100%\" cellpadding=\"5\">' +\n    '<tr style=\"color:#888;text-align:left;border-bottom:1px solid #eee\">' +\n    '<th>Who</th><th>Tier</th><th>Stale</th><th>Angle</th></tr>' +\n    byAction[action].map(rowHtml).join('') + '</table>';\n}\n\nconst windowSummary = ['DM', 'Comment', 'Connect', 'Monitor']\n  .map((a) => escapeHtml(a) + ' ' + escapeHtml(windows[a]) + 'd')\n  .join(', ');\n\n// Noun and verb have to agree together: one signal needs attention, several\n// signals need it.\nconst subject = staleCount === 1\n  ? 'Scout: 1 signal needs attention'\n  : 'Scout: ' + staleCount + ' signals need attention';\nconst html = '<div style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:680px;color:#222\">' +\n  '<h2>Signals going stale</h2>' +\n  '<div style=\"color:#888;margin-bottom:8px\">Open rows past their follow-up window, hottest first.</div>' +\n  sections +\n  '<div style=\"color:#aaa;font-size:12px;margin-top:18px\">Windows: ' + windowSummary +\n  ', everything else ' + escapeHtml(fallbackDays) + 'd. Measured from Last touch, or the row creation date when never touched.</div></div>';\n\nreturn [{ json: { staleCount, shouldEmail: staleCount > 0, subject, html } }];"
+      }
+    },
+    {
+      "id": "2aecd176-c02d-511a-971f-005015395547",
+      "name": "Any Stale?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "stale-count-above-zero",
+              "leftValue": "={{ $json.staleCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b78c7155-4c5a-5a62-8e8e-de44ba72926f",
+      "name": "Email Nudge",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        -100
+      ],
+      "parameters": {
+        "sendTo": "={{ $('Scout Setup').first().json.recipientEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "dc426715-ba0c-54a0-a69b-d8e3d479e8dc",
+      "name": "No Stale Signals",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        120
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "d2a7e786-55a1-5c73-ab24-83ca4cc0cba8",
+      "name": "What this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -420
+      ],
+      "parameters": {
+        "content": "## Stale signal nudge\n\nOn weekday mornings Scout reads your open Notion rows and emails you the\nones that have gone quiet for longer than their follow-up window.\n\nIt never contacts anyone in the list. The only message it sends is the\ndigest, to you.\n\nRows with next action **Ignore** and rows with status **Closed** are\nskipped. A row that has never been touched ages from its creation date.",
+        "width": 640,
+        "height": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "cc8b1e04-1fff-5543-ab7d-2804f1746243",
+      "name": "Configure before running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -420
+      ],
+      "parameters": {
+        "content": "## Configure before running\n\n1. Open **Scout Setup** and set your Notion database id and the address\n   that should receive the nudge.\n2. Bind a Notion credential on **Query Open Signals** (HTTP Header Auth)\n   and a Gmail OAuth2 credential on **Email Nudge**.\n3. Tune **staleDaysByAction**. Each window is a whole number of days\n   from 1 to 90. The **default** key covers any action not listed.\n\nThis workflow ships with its timezone set to **UTC**. Change the\nworkflow timezone in workflow settings before you activate it, or the\nmorning run will fire at the wrong local hour.",
+        "width": 640,
+        "height": 360,
+        "color": 5
+      }
+    },
+    {
+      "id": "0dd5502e-464d-5867-88f3-19d513454a5c",
+      "name": "Limits worth knowing",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -420
+      ],
+      "parameters": {
+        "content": "## Limits worth knowing\n\n**One page of results.** The Notion query asks for 100 rows and v0.1\ndoes not follow the pagination cursor. Past 100 open rows the digest\ncovers only the first page Notion returns. Keep the board pruned, or\npaginate before you rely on it.\n\n**No email when nothing is stale.** **Any Stale?** routes an empty run\nto **No Stale Signals** and stops. Scout does not send a \"nothing to do\"\nmessage.\n\nNames, angles and links come out of Notion and are HTML-escaped before\nthey reach the email. Only http and https links become clickable.",
+        "width": 640,
+        "height": 360,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Weekday Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scout Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Setup": {
+      "main": [
+        [
+          {
+            "node": "Validate Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Setup": {
+      "main": [
+        [
+          {
+            "node": "Query Open Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Open Signals": {
+      "main": [
+        [
+          {
+            "node": "Compute Stale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Stale": {
+      "main": [
+        [
+          {
+            "node": "Any Stale?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Stale?": {
+      "main": [
+        [
+          {
+            "node": "Email Nudge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Stale Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  },
+  "pinData": {},
+  "tags": []
+}

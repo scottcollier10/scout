@@ -1,0 +1,15 @@
+{
+  "description": "Synthetic Anthropic Messages API response for a post that qualifies as a RevOps signal. The text field holds the exact minified JSON contract the workflow expects.",
+  "id": "msg_synthetic_relevant_fixture",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 412, "output_tokens": 168 },
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"relevant\":true,\"warmth_tier\":\"Tier 2 (warm)\",\"pain_areas\":[\"Dedupe\",\"Lifecycle\",\"Routing\"],\"best_angle\":\"Is the duplicate created before or after the lifecycle stage automation fires?\",\"draft_comment\":\"This usually comes down to ordering: if the lifecycle automation runs before your dedupe step, it re-creates the company record it just merged. Try checking whether the duplicate appears on the association or on the company object itself. That tells you which side of the sync to fix first.\",\"persona_type\":\"ICP practitioner\",\"track\":\"Sales (ICP)\"}"
+    }
+  ]
+}

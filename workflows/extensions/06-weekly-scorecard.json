@@ -1,0 +1,307 @@
+{
+  "name": "Scout 06 | Weekly Scorecard",
+  "nodes": [
+    {
+      "id": "908b56ce-6f05-5ffe-b57b-eb4839d36125",
+      "name": "Friday Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 16 * * 5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1814d91b-2936-59d3-85d9-4cf7cfdcbc38",
+      "name": "Scout Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0eb25e33-1353-58bb-b2a3-137a22cdc05a",
+              "name": "notionDatabaseId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "25d0cb84-9518-5319-b03c-e23213184960",
+              "name": "recipientEmail",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "d67a5bd8-6167-5da0-8f19-54c98212423a",
+              "name": "weeklyTargets",
+              "value": {
+                "newSignals": 10,
+                "tier2Plus": 4,
+                "replies": 1,
+                "scanOrDemo": 1
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5fa896c6-13d6-5f30-a47b-d1a700aca8ef",
+      "name": "Validate Setup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// VALIDATE SCOUT SETUP\n// Stops the run before either Notion query and before the email when\n// configuration is missing or out of range.\nconst cfg = $('Scout Setup').first().json;\nconst problems = [];\n\nconst databaseId = (cfg.notionDatabaseId || '').toString().trim();\nif (!databaseId) {\n  problems.push('notionDatabaseId is empty. Paste the id of your Notion signal map database.');\n}\n\n// Deliberately conservative: enough to catch an empty or obviously malformed\n// value before Gmail is asked to send.\nconst recipient = (cfg.recipientEmail || '').toString().trim();\nif (!recipient) {\n  problems.push('recipientEmail is empty. Set the address that should receive the scorecard.');\n} else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@.]{2,}$/.test(recipient)) {\n  problems.push('recipientEmail does not look like an email address.');\n}\n\nconst REQUIRED_TARGETS = ['newSignals', 'tier2Plus', 'replies', 'scanOrDemo'];\nconst targets = (cfg.weeklyTargets && typeof cfg.weeklyTargets === 'object') ? cfg.weeklyTargets : null;\n\nif (!targets) {\n  problems.push('weeklyTargets must be an object of weekly goals.');\n} else {\n  for (const key of REQUIRED_TARGETS) {\n    const value = Number(targets[key]);\n    if (!Number.isInteger(value) || value < 0 || value > 1000) {\n      problems.push('weeklyTargets.' + key + ' must be a whole number from 0 to 1000.');\n    }\n  }\n}\n\nif (problems.length > 0) {\n  throw new Error('Scout Setup is not configured correctly. ' + problems.join(' '));\n}\n\nreturn [{ json: { validated: true } }];"
+      }
+    },
+    {
+      "id": "50e712c8-e5bf-53d7-bdb7-de64b3402caf",
+      "name": "Query New This Week",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $('Scout Setup').first().json.notionDatabaseId }}/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filter: { timestamp: 'created_time', created_time: { on_or_after: $now.minus({ days: 7 }).toISO() } }, page_size: 100 }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "5a7f74f5-6caa-50a5-a979-34965d3eefe0",
+      "name": "Query Touched This Week",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $('Scout Setup').first().json.notionDatabaseId }}/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filter: { property: 'Last touch', date: { on_or_after: $now.minus({ days: 7 }).toISODate() } }, page_size: 100 }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "8fef82fd-4fb2-5176-9b8d-96092c8c8d8d",
+      "name": "Compute Scorecard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// COMPUTE THE WEEKLY SCORECARD\n// Reads the two Notion queries and builds one HTML email comparing the week\n// against the targets in Scout Setup. A completely quiet week still produces a\n// scorecard: an empty board is a result, not a failure.\nconst cfg = $('Scout Setup').first().json;\nconst targets = cfg.weeklyTargets || {};\nconst nowMs = +$now;\nconst weekStart = new Date(nowMs - 7 * 86400000).toISOString().slice(0, 10);\nconst weekEnd = new Date(nowMs).toISOString().slice(0, 10);\n\n// Parses an absolute http(s) URL without the `URL` global, which n8n's Code\n// node sandbox does not provide. Returns null for anything it will not vouch\n// for, so every caller can treat null as \"refuse this value\".\nfunction parseHttpUrl(value) {\n  const raw = (value === null || value === undefined ? '' : String(value)).trim();\n  if (!raw) return null;\n\n  // No spaces, tabs, newlines or control characters anywhere. A URL carrying\n  // one is either malformed or an attempt to hide a second value inside the\n  // first, and neither is worth guessing about.\n  for (let i = 0; i < raw.length; i++) {\n    const code = raw.charCodeAt(i);\n    if (code <= 0x20 || code === 0x7f) return null;\n  }\n\n  // Backslashes are rejected rather than normalised. Browsers treat a\n  // backslash as \"/\", so an authority written with one can read as a hostile\n  // host in a browser and a trusted host in a naive parser. Scout refuses the\n  // ambiguity instead of picking a side.\n  if (raw.indexOf('\\\\') !== -1) return null;\n\n  const parts = /^([A-Za-z][A-Za-z0-9+.-]*):\\/\\/([^/?#]*)([^?#]*)(\\?[^#]*)?(#[\\s\\S]*)?$/.exec(raw);\n  if (!parts) return null;\n\n  const protocol = parts[1].toLowerCase() + ':';\n  if (protocol !== 'http:' && protocol !== 'https:') return null;\n\n  const authority = parts[2];\n  if (!authority) return null;\n\n  // Split user information off the authority. Scout never sends credentials in\n  // a URL, but workflow 01 has to be able to see that someone tried.\n  let username = '';\n  let password = '';\n  let hostport = authority;\n  const at = authority.lastIndexOf('@');\n  if (at !== -1) {\n    const userinfo = authority.slice(0, at);\n    if (!userinfo) return null;\n    hostport = authority.slice(at + 1);\n    const sep = userinfo.indexOf(':');\n    username = sep === -1 ? userinfo : userinfo.slice(0, sep);\n    password = sep === -1 ? '' : userinfo.slice(sep + 1);\n  }\n  if (!hostport) return null;\n\n  // Separate an optional port so it can never be mistaken for part of the host.\n  let hostname = hostport;\n  let port = '';\n  if (hostport.charAt(0) === '[') {\n    const close = hostport.indexOf(']');\n    if (close === -1) return null;\n    hostname = hostport.slice(0, close + 1);\n    const rest = hostport.slice(close + 1);\n    if (rest) {\n      if (rest.charAt(0) !== ':') return null;\n      port = rest.slice(1);\n    }\n  } else {\n    const sep = hostport.indexOf(':');\n    if (sep !== -1) {\n      hostname = hostport.slice(0, sep);\n      port = hostport.slice(sep + 1);\n    }\n    // Only ASCII hosts are accepted. An internationalised name would need\n    // punycode conversion to compare safely, and Scout has no need of one.\n    if (!/^[A-Za-z0-9._~%-]+$/.test(hostname)) return null;\n  }\n  if (!hostname) return null;\n  if (port && !/^[0-9]+$/.test(port)) return null;\n\n  const pathname = parts[3] || '/';\n  const search = parts[4] || '';\n  const hash = parts[5] || '';\n  const host = port ? hostname + ':' + port : hostname;\n  const href = protocol + '//' + host + pathname + search + hash;\n\n  return {\n    protocol: protocol,\n    username: username,\n    password: password,\n    hostname: hostname,\n    port: port,\n    host: host,\n    pathname: pathname,\n    search: search,\n    hash: hash,\n    href: href,\n    toString: function () { return href; }\n  };\n}\n\n// Everything interpolated into the email below is user-controlled data that\n// arrived from Notion, so it is escaped before it reaches the HTML.\nfunction escapeHtml(value) {\n  return (value === null || value === undefined ? '' : String(value))\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\n// Only http(s) links become anchors. Anything else is rendered as plain text\n// so a hostile value cannot smuggle a script URL into the operator's inbox.\nfunction safeHref(value) {\n  const parsed = parseHttpUrl(value);\n  if (!parsed) return '';\n  return escapeHtml(parsed.href);\n}\n\nfunction props(page) { return (page && page.properties) || {}; }\nfunction sel(page, key) { const v = props(page)[key]; return (v && v.select && v.select.name) || ''; }\nfunction checkbox(page, key) { const v = props(page)[key]; return !!(v && v.checkbox); }\nfunction urlOf(page, key) { const v = props(page)[key]; return (v && v.url) || ''; }\nfunction titleOf(page) {\n  const t = (props(page).Name && props(page).Name.title) || [];\n  return t.map((x) => x.plain_text || '').join('') || '(untitled)';\n}\n\nfunction resultsOf(nodeName) {\n  try {\n    const payload = $(nodeName).first().json;\n    return Array.isArray(payload.results) ? payload.results : [];\n  } catch (e) {\n    return [];\n  }\n}\n\nconst created = resultsOf('Query New This Week');\nconst touched = resultsOf('Query Touched This Week');\n\nfunction tally(pages, key) {\n  const counts = {};\n  for (const page of pages) {\n    const value = sel(page, key) || 'Unknown';\n    counts[value] = (counts[value] || 0) + 1;\n  }\n  return counts;\n}\n\nfunction tallyRows(counts) {\n  const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);\n  if (keys.length === 0) return '<tr><td colspan=\"2\" style=\"color:#888\">none</td></tr>';\n  return keys\n    .map((k) => '<tr><td>' + escapeHtml(k) + '</td><td style=\"text-align:right\"><b>' + counts[k] + '</b></td></tr>')\n    .join('');\n}\n\nconst newCount = created.length;\nconst tiers = tally(created, 'Warmth tier');\nconst tier1 = tiers['Tier 1 (hot)'] || 0;\nconst tier2 = tiers['Tier 2 (warm)'] || 0;\nconst tier2Plus = tier1 + tier2;\nconst replies = touched.filter((p) => checkbox(p, 'Replied')).length;\nconst inConversation = touched.filter((p) => sel(p, 'Status') === 'In conversation').length;\nconst scanOrDemo = touched.filter((p) => sel(p, 'Status') === 'Scan/Demo').length;\nconst dms = created.filter((p) => sel(p, 'Next action') === 'DM').length;\nconst connects = created.filter((p) => sel(p, 'Next action') === 'Connect').length;\n\nconst quietWeek = newCount === 0 && touched.length === 0;\n\nfunction scoreRow(label, actual, target) {\n  const goal = Number(target);\n  const safeGoal = Number.isInteger(goal) ? goal : 0;\n  return '<tr><td>' + escapeHtml(label) + '</td>' +\n    '<td style=\"text-align:right\"><b>' + actual + '</b></td>' +\n    '<td style=\"text-align:right;color:#888\">' + safeGoal + '</td>' +\n    '<td style=\"text-align:center\">' + (actual >= safeGoal ? 'hit' : '&mdash;') + '</td></tr>';\n}\n\nconst hotRows = created.filter((p) => sel(p, 'Warmth tier') === 'Tier 1 (hot)').slice(0, 8);\nconst hotList = hotRows.length === 0\n  ? '<li style=\"color:#888\">none this week</li>'\n  : hotRows.map((p) => {\n      const href = safeHref(urlOf(p, 'Source URL'));\n      const label = escapeHtml(titleOf(p));\n      return '<li>' + (href ? '<a href=\"' + href + '\">' + label + '</a>' : label) + '</li>';\n    }).join('');\n\nconst header = '<div style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:640px;color:#222\">' +\n  '<h2 style=\"margin-bottom:4px\">Scout weekly scorecard</h2>' +\n  '<div style=\"color:#888;margin-bottom:16px\">' + escapeHtml(weekStart) + ' to ' + escapeHtml(weekEnd) + '</div>';\n\n// A quiet week is reported plainly rather than as a wall of empty tables.\nconst body = quietWeek\n  ? '<div>No new signals and no activity on existing rows this week.</div>' +\n    '<div style=\"color:#888;margin-top:8px\">Targets were ' + escapeHtml(Number(targets.newSignals) || 0) +\n    ' new signals and ' + escapeHtml(Number(targets.tier2Plus) || 0) + ' at Tier 2 or better.</div>'\n  : '<table style=\"border-collapse:collapse;width:100%;margin-bottom:20px\" cellpadding=\"6\">' +\n    '<tr style=\"border-bottom:2px solid #eee;color:#888;text-align:left\">' +\n    '<th>Metric</th><th style=\"text-align:right\">Actual</th><th style=\"text-align:right\">Target</th><th></th></tr>' +\n    scoreRow('New signals', newCount, targets.newSignals) +\n    scoreRow('Tier 2 or better', tier2Plus, targets.tier2Plus) +\n    scoreRow('Replies', replies, targets.replies) +\n    scoreRow('Scan or demo', scanOrDemo, targets.scanOrDemo) +\n    '</table>' +\n    '<table style=\"border-collapse:collapse;width:48%;display:inline-table;vertical-align:top;margin-right:3%\" cellpadding=\"5\">' +\n    '<tr style=\"border-bottom:1px solid #eee;color:#888;text-align:left\"><th>By source</th><th></th></tr>' +\n    tallyRows(tally(created, 'Source')) + '</table>' +\n    '<table style=\"border-collapse:collapse;width:48%;display:inline-table;vertical-align:top\" cellpadding=\"5\">' +\n    '<tr style=\"border-bottom:1px solid #eee;color:#888;text-align:left\"><th>By track</th><th></th></tr>' +\n    tallyRows(tally(created, 'Track')) + '</table>' +\n    '<table style=\"border-collapse:collapse;width:48%;display:inline-table;vertical-align:top;margin-right:3%;margin-top:14px\" cellpadding=\"5\">' +\n    '<tr style=\"border-bottom:1px solid #eee;color:#888;text-align:left\"><th>By persona</th><th></th></tr>' +\n    tallyRows(tally(created, 'Persona type')) + '</table>' +\n    '<table style=\"border-collapse:collapse;width:48%;display:inline-table;vertical-align:top;margin-top:14px\" cellpadding=\"5\">' +\n    '<tr style=\"border-bottom:1px solid #eee;color:#888;text-align:left\"><th>Pipeline now</th><th></th></tr>' +\n    '<tr><td>In conversation</td><td style=\"text-align:right\"><b>' + inConversation + '</b></td></tr>' +\n    '<tr><td>Marked DM</td><td style=\"text-align:right\"><b>' + dms + '</b></td></tr>' +\n    '<tr><td>Marked Connect</td><td style=\"text-align:right\"><b>' + connects + '</b></td></tr>' +\n    '</table>' +\n    '<h3 style=\"margin-top:24px;margin-bottom:6px\">Tier 1 signals this week</h3>' +\n    '<ul style=\"margin-top:0\">' + hotList + '</ul>';\n\nconst footer = '<div style=\"color:#aaa;font-size:12px;margin-top:20px\">' +\n  'Counted from your Notion signal map. Comments posted and messages sent are not tracked here, ' +\n  'because Scout does not send them.</div></div>';\n\nconst subject = quietWeek\n  ? 'Scout scorecard, week of ' + weekStart + ': no activity'\n  : 'Scout scorecard, week of ' + weekStart + ': ' + newCount + ' new, ' + tier2Plus + ' Tier 2+';\n\nreturn [{ json: {\n  subject,\n  html: header + body + footer,\n  quietWeek,\n  newCount,\n  tier1,\n  tier2,\n  tier2Plus,\n  replies,\n  scanOrDemo,\n  inConversation\n} }];"
+      }
+    },
+    {
+      "id": "4c6bf4c5-6bd2-5e7d-a249-25badae6f2ae",
+      "name": "Email Scorecard",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "sendTo": "={{ $('Scout Setup').first().json.recipientEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "57e5e486-cefa-58ea-a477-0301659d24bc",
+      "name": "What this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -420
+      ],
+      "parameters": {
+        "content": "## Weekly scorecard\n\nAn extension, not part of the core loop.\n\nEvery Friday afternoon Scout counts what landed in your signal map over\nthe last seven days and emails you one summary: new signals, warmth\nmix, replies, and which rows moved.\n\nTargets live in **Scout Setup** under **weeklyTargets**. They are your\nnumbers, not defaults you have to justify. Set them to zero if you do\nnot want to be scored.\n\nScout emails only you. It contacts nobody in the report.",
+        "width": 640,
+        "height": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "8541670e-7e66-529f-8064-25bf9bea4a09",
+      "name": "Configure before running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -420
+      ],
+      "parameters": {
+        "content": "## Configure before running\n\n1. Open **Scout Setup** and set your Notion database id and the address\n   that should receive the scorecard.\n2. Bind a Notion credential on both query nodes and a Gmail OAuth2\n   credential on **Email Scorecard**.\n3. Adjust **weeklyTargets**. Each value is a whole number from 0 to\n   1000.\n\nNew signals are counted from Notion's own page creation time, so you do\nnot need an extra date property.\n\nThis workflow ships with its timezone set to **UTC**. Change the\nworkflow timezone before you activate the schedule.",
+        "width": 640,
+        "height": 360,
+        "color": 5
+      }
+    },
+    {
+      "id": "0c6f9050-98a4-5a06-9c5f-e9f63d78440d",
+      "name": "Limits worth knowing",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -420
+      ],
+      "parameters": {
+        "content": "## Limits worth knowing\n\n**One page per query.** Both Notion queries ask for 100 rows and v0.1\ndoes not follow the pagination cursor. A week with more than 100 new or\n100 touched rows is undercounted. Paginate before you rely on these\nnumbers for anything that matters.\n\n**A quiet week still sends.** If both queries come back empty you get a\nshort \"no activity\" scorecard rather than a failed execution.\n\nNames and links come out of Notion and are HTML-escaped before they\nreach the email. Only http and https links become clickable.",
+        "width": 640,
+        "height": 360,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Friday Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scout Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Setup": {
+      "main": [
+        [
+          {
+            "node": "Validate Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Setup": {
+      "main": [
+        [
+          {
+            "node": "Query New This Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query New This Week": {
+      "main": [
+        [
+          {
+            "node": "Query Touched This Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Touched This Week": {
+      "main": [
+        [
+          {
+            "node": "Compute Scorecard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Scorecard": {
+      "main": [
+        [
+          {
+            "node": "Email Scorecard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  },
+  "pinData": {},
+  "tags": []
+}

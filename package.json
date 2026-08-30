@@ -1,0 +1,20 @@
+{
+  "name": "scout-revops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn HubSpot Community questions into prioritized RevOps follow-up.",
+  "type": "module",
+  "engines": {
+    "node": "22.22.x"
+  },
+  "scripts": {
+    "test": "node --test",
+    "validate": "node scripts/validate-workflows.mjs",
+    "scan": "node scripts/scan-public-workflows.mjs",
+    "check": "npm run test && npm run validate && npm run scan && npm run paths",
+    "paths": "node scripts/check-local-paths.mjs --tree",
+    "paths:history": "node scripts/check-local-paths.mjs --strict-history",
+    "markers": "node scripts/scan-private-markers.mjs"
+  },
+  "license": "MIT"
+}

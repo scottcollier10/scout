@@ -1,0 +1,31 @@
+{
+  "description": "Synthetic HubSpot Community RSS payload as it looks after the Parse XML node. Entirely fictional. No real post, member, company or URL.",
+  "rss": {
+    "channel": {
+      "title": "RevOps & Data Hub",
+      "item": [
+        {
+          "title": "Duplicate companies keep reappearing after our lifecycle stage sync",
+          "link": "https://example.com/community/post-001",
+          "dc:creator": "northstar_ops",
+          "pubDate": "Wed, 26 Aug 2026 09:15:00 +0000",
+          "description": "<p>We run RevOps at Northstar Systems. Every time our lifecycle stage automation fires, we end up with duplicate company records and routing sends the lead to the wrong owner. We have tried a dedupe workflow but the data quality issues keep coming back. Has anyone solved this mapping problem?</p>"
+        },
+        {
+          "title": "What is the keyboard shortcut for the sidebar?",
+          "link": "https://example.com/community/post-002",
+          "dc:creator": "casual_user",
+          "pubDate": "Wed, 26 Aug 2026 08:00:00 +0000",
+          "description": "<p>Quick question about the left sidebar keyboard shortcut. Not urgent.</p>"
+        },
+        {
+          "title": "Stale post about lifecycle routing from last month",
+          "link": "https://example.com/community/post-003",
+          "dc:creator": "old_poster",
+          "pubDate": "Tue, 14 Jul 2026 10:00:00 +0000",
+          "description": "<p>An older lifecycle and routing question that falls outside the lookback window.</p>"
+        }
+      ]
+    }
+  }
+}

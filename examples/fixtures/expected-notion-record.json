@@ -1,0 +1,50 @@
+{
+  "description": "The Notion page body Scout builds from community-post.json plus anthropic-relevant.json. Property names and select values match docs/notion-schema.md exactly. database_id is empty here because it comes from Scout Setup at run time.",
+  "parent": { "database_id": "" },
+  "properties": {
+    "Name": {
+      "title": [{ "text": { "content": "northstar_ops" } }]
+    },
+    "Signal": {
+      "rich_text": [
+        {
+          "text": {
+            "content": "Duplicate companies keep reappearing after our lifecycle stage sync - We run RevOps at Northstar Systems. Every time our lifecycle stage automation fires, we end up with duplicate company records and routing sends the lead to the wrong owner. We have tried a dedupe workflow but the data quality issues keep coming back. Has anyone solved this mapping problem?"
+          }
+        }
+      ]
+    },
+    "Evidence": {
+      "rich_text": [{ "text": { "content": "Board: RevOps & Data Hub" } }]
+    },
+    "Warmth tier": { "select": { "name": "Tier 2 (warm)" } },
+    "Pain area": {
+      "multi_select": [{ "name": "Dedupe" }, { "name": "Lifecycle" }, { "name": "Routing" }]
+    },
+    "Best angle": {
+      "rich_text": [
+        {
+          "text": {
+            "content": "Is the duplicate created before or after the lifecycle stage automation fires?"
+          }
+        }
+      ]
+    },
+    "Draft": {
+      "rich_text": [
+        {
+          "text": {
+            "content": "This usually comes down to ordering: if the lifecycle automation runs before your dedupe step, it re-creates the company record it just merged. Try checking whether the duplicate appears on the association or on the company object itself. That tells you which side of the sync to fix first."
+          }
+        }
+      ]
+    },
+    "Persona type": { "select": { "name": "ICP practitioner" } },
+    "Track": { "select": { "name": "Sales (ICP)" } },
+    "Source": { "select": { "name": "HubSpot Community" } },
+    "Source URL": { "url": "https://example.com/community/post-001" },
+    "Next action": { "select": { "name": "Comment" } },
+    "Status": { "select": { "name": "New" } },
+    "Replied": { "checkbox": false }
+  }
+}

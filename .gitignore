@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# n8n local state
+.n8n/
+
+# Node
+node_modules/
+coverage/
+dist/
+
+# Logs and scratch space
+*.log
+tmp/

@@ -1,0 +1,287 @@
+{
+  "name": "Scout 04 | Community Engagement Sync",
+  "nodes": [
+    {
+      "id": "704d7bed-6f52-501d-895c-d2439b64e0ad",
+      "name": "Community Notifications",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour",
+              "minute": 0
+            }
+          ]
+        },
+        "filters": {
+          "q": "from:hubspot.com"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a8ffcb13-9b9b-5013-a33e-49bce53c6350",
+      "name": "Scout Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84755dfa-e10e-551c-977f-5474dde2f4e1",
+              "name": "notionDatabaseId",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "015e8e8d-34e2-5b29-9a1a-318e24140752",
+      "name": "Validate Setup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// VALIDATE SCOUT SETUP\n// Stops the run before Find Existing Row, and therefore before any Notion\n// request, when configuration is missing. Without this an unconfigured\n// instance would build a query URL with an empty database id and fail deep in\n// an HTTP node instead of naming the field to fix.\nconst cfg = $('Scout Setup').first().json;\nconst problems = [];\n\nconst databaseId = (cfg.notionDatabaseId || '').toString().trim();\nif (!databaseId) {\n  problems.push('notionDatabaseId is empty. Paste the id of your Notion signal map database.');\n}\n\nif (problems.length > 0) {\n  throw new Error('Scout Setup is not configured correctly. ' + problems.join(' '));\n}\n\nreturn [{ json: { validated: true } }];"
+      }
+    },
+    {
+      "id": "26f79c98-2e50-5b00-8c5e-eeb797a94a33",
+      "name": "Parse Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// PARSE HUBSPOT COMMUNITY NOTIFICATION EMAILS\n// Notification templates change and Gmail exposes the body under several\n// different field names, so this builds one haystack from every text-ish field\n// present and looks for a community topic link. Messages without one are\n// dropped: this workflow only reacts to community threads.\n//\n// Sender addresses are deliberately never carried forward. Scout keeps the\n// public display name and the topic URL and nothing else about the person.\n//\n// Messages are read from the trigger by name rather than from $input, because\n// Validate Setup sits between the trigger and this node.\nconst TOPIC_URL_RE = /https?:\\/\\/community\\.hubspot\\.com\\/t\\/[a-z0-9-]+\\/(\\d+)/i;\nconst ADDRESS_RE = /[^\\s<>()\"']+@[^\\s<>()\"']+\\.[^\\s<>()\"']+/g;\nconst REPLIER_RE = /([A-Za-z0-9_.\\- ]{2,40})\\s+(?:replied|posted|responded|mentioned)/i;\n\nfunction scrub(value) {\n  return (value === null || value === undefined ? '' : String(value)).replace(ADDRESS_RE, '[address removed]');\n}\n\nconst out = [];\n\nfor (const item of $('Community Notifications').all()) {\n  const mail = item.json || {};\n  const haystack = [mail.text, mail.html, mail.textHtml, mail.textPlain, mail.snippet, mail.subject, mail.Subject, mail.body]\n    .filter(Boolean)\n    .join('\\n');\n\n  const match = haystack.match(TOPIC_URL_RE);\n  if (!match) continue;\n\n  const replierMatch = scrub(haystack).match(REPLIER_RE);\n\n  // Only two values leave this node: the topic link, which is public, and a\n  // display name derived from it. The subject, snippet, body, Gmail message id\n  // and sender address are read to find those two and are then discarded here,\n  // so no later node can put them in a Notion request even by accident.\n  out.push({ json: {\n    topicUrl: match[0],\n    topicId: match[1],\n    replier: replierMatch ? replierMatch[1].trim() : ''\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "44a9e9bc-78a6-5f48-a483-6b9f1aac2341",
+      "name": "Find Existing Row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $('Scout Setup').first().json.notionDatabaseId }}/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filter: { property: 'Source URL', url: { equals: $json.topicUrl } }, page_size: 1 }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "cb7ce6dc-a431-585a-a9c5-6247fa77df62",
+      "name": "Decide & Build",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// DECIDE: UPDATE THE MATCHED ROW, OR CREATE A NEW ENGAGEMENT ROW\n// Notion responses arrive in the same order the notifications were sent, so\n// each response is paired with its notification by index. One item carries the\n// method, URL and body, which lets a single HTTP node handle both PATCH and\n// POST.\nconst DATABASE_ID = ($('Scout Setup').first().json.notionDatabaseId || '').toString().trim();\nconst today = new Date(+$now).toISOString().slice(0, 10);\n\nfunction cap(value) {\n  return (value === null || value === undefined ? '' : String(value)).slice(0, 1900);\n}\n\nconst sources = $('Parse Notification').all();\nconst inputs = $input.all();\nconst out = [];\n\nfor (let i = 0; i < inputs.length; i++) {\n  const response = inputs[i].json || {};\n  const src = (sources[i] && sources[i].json) || {};\n  const results = Array.isArray(response.results) ? response.results : [];\n\n  if (results.length > 0) {\n    // Someone already in the signal map replied. Advance the existing row\n    // instead of creating a duplicate.\n    out.push({ json: {\n      matched: true,\n      topicUrl: src.topicUrl,\n      _method: 'PATCH',\n      _url: 'https://api.notion.com/v1/pages/' + results[0].id,\n      _notionBody: { properties: {\n        'Replied': { checkbox: true },\n        'Status': { select: { name: 'In conversation' } },\n        'Next action': { select: { name: 'DM' } },\n        'Last touch': { date: { start: today } }\n      }}\n    }});\n    continue;\n  }\n\n  // Someone new engaged on a thread you are already in. That is a warm signal,\n  // so it gets its own row. There is no classifier on this path, so persona\n  // and track stay Unknown until a human or workflow 05 fills them in.\n  //\n  // The row is built from the parsed display name and the topic link only.\n  // Falling back to the email subject would have put mail content into Notion,\n  // so an unrecognised name falls back to a fixed neutral label instead, and\n  // Signal is a constant rather than anything quoted from the message.\n  const name = (src.replier && src.replier.trim()) || 'HubSpot Community participant';\n\n  out.push({ json: {\n    matched: false,\n    topicUrl: src.topicUrl,\n    _method: 'POST',\n    _url: 'https://api.notion.com/v1/pages',\n    _notionBody: { parent: { database_id: DATABASE_ID }, properties: {\n      'Name': { title: [{ text: { content: cap(name) } }] },\n      'Signal': { rich_text: [{ text: { content: 'Inbound HubSpot Community engagement' } }] },\n      'Evidence': { rich_text: [{ text: { content: 'Replied on a community thread you are in, seen through an email notification.' } }] },\n      'Warmth tier': { select: { name: 'Tier 1 (hot)' } },\n      'Persona type': { select: { name: 'Unknown' } },\n      'Track': { select: { name: 'Unknown' } },\n      'Source': { select: { name: 'HubSpot Community' } },\n      'Source URL': { url: src.topicUrl || null },\n      'Status': { select: { name: 'Engaged' } },\n      'Next action': { select: { name: 'DM' } },\n      'Replied': { checkbox: true },\n      'Last touch': { date: { start: today } }\n    }}\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "d2775307-8b5e-5a86-a3d5-c6cef728464f",
+      "name": "Write to Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "method": "={{ $json._method }}",
+        "url": "={{ $json._url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._notionBody) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "1ce32de3-b68b-5639-ace3-156eee5aab25",
+      "name": "What this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -420
+      ],
+      "parameters": {
+        "content": "## Community engagement sync\n\nAn extension, not part of the core loop.\n\nWhen HubSpot Community emails you that someone replied on a thread you\nare in, Scout finds the matching Notion row and marks it as a live\nconversation. If there is no matching row, it creates a hot one so the\nnew person does not fall through.\n\nScout reads your notification mail. It does not read your inbox at\nlarge, and it does not reply to anything.",
+        "width": 640,
+        "height": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "ccf1247b-255d-512e-8f09-6e48e3f13ff4",
+      "name": "Test this before you activate it",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -420
+      ],
+      "parameters": {
+        "content": "## Test this before you activate it\n\n**Notification formats change.** The parser looks for a community topic\nlink inside whichever body field Gmail exposes. HubSpot can change that\ntemplate at any time, and when it does this extension quietly stops\nmatching.\n\nForward yourself a real community notification and run this workflow\nmanually against it **before** you activate it. Confirm that\n**Parse Notification** produces a topic URL and a display name.\n\nMessages without a community topic link are dropped on purpose.",
+        "width": 640,
+        "height": 360,
+        "color": 6
+      }
+    },
+    {
+      "id": "709c0d09-444a-5020-9c19-cadbb828bd25",
+      "name": "What Scout stores",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -460
+      ],
+      "parameters": {
+        "content": "## What Scout stores\n\nOnly the public display name shown in the notification and the topic\nURL.\n\nNothing else from the message reaches Notion. The subject, snippet,\nbody, Gmail message id and sender address are read to find those two\nvalues and are then discarded inside **Parse Notification**, so no\nlater node can write them.\n\nWhen no display name can be read, the row is named\n`HubSpot Community participant` rather than falling back to the\nsubject line. The `Signal` text is a fixed phrase, not a quote from\nthe mail.\n\n## Configure before running\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind a Gmail OAuth2 credential on **Community Notifications** and a\n   Notion credential on **Find Existing Row** and **Write to Notion**.\n\n**Validate Setup** stops the run before the first Notion request while\nthe database id is still empty, and names the field to fix.",
+        "width": 640,
+        "height": 400,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Community Notifications": {
+      "main": [
+        [
+          {
+            "node": "Scout Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Setup": {
+      "main": [
+        [
+          {
+            "node": "Validate Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Setup": {
+      "main": [
+        [
+          {
+            "node": "Parse Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Notification": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Row": {
+      "main": [
+        [
+          {
+            "node": "Decide & Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide & Build": {
+      "main": [
+        [
+          {
+            "node": "Write to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

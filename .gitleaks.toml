@@ -1,0 +1,19 @@
+title = "Scout secret scan"
+
+# Start from the full upstream rule set rather than a hand-picked subset, so a
+# new rule added upstream applies here without anyone remembering to copy it.
+[extend]
+useDefault = true
+
+# There are deliberately no path or file allowlists in this file.
+#
+# Allowlisting a directory is the failure mode this scan exists to prevent: the
+# six workflow exports, the fixtures, and the tests are exactly where a real
+# credential would end up, so exempting them would make a clean result
+# meaningless. If a synthetic fixture ever trips a rule, add an allowlist here
+# with `regexes` matching that one exact literal value and a comment naming the
+# file it lives in. Never add `paths`, and never allowlist a whole file.
+#
+# The repository's own scanner, `npm run scan`, is a separate gate that checks
+# the workflow JSON for credential bindings, instance identifiers, and private
+# hostnames. gitleaks does not replace it.

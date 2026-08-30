@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 752" width="920" height="752" role="img" aria-labelledby="scoutTitle scoutDesc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title id="scoutTitle">Scout architecture</title>
+  <desc id="scoutDesc">Two entry paths with separate checks. HubSpot Community RSS passes feed validation for https, exact host and .rss path, then recency and RevOps keyword filtering. Manual intake passes its own form input validation. Both branches converge at Claude classification, and qualified signals are written to the Notion signal map. Workflow 04 writes engagement state and workflow 05 reads eligible rows and writes drafts; workflows 03 and 06 read the map and prepare digests for the operator's own inbox. A human review boundary sits below the map: drafts wait there and only a person crosses it to post anything.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b636e"/>
+    </marker>
+    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c2410c"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="752" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="48" font-size="27" font-weight="700" fill="#c2410c">Scout</text>
+  <text x="124" y="48" font-size="14" fill="#5b636e">turns HubSpot Community questions into prioritized RevOps follow-up</text>
+  <text x="40" y="74" font-size="13" fill="#5b636e">Six n8n workflows. One Notion signal map. Nothing is sent without a person deciding to send it.</text>
+
+  <!-- Entry paths -->
+  <rect x="40" y="100" width="400" height="60" rx="8" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="60" y="122" font-size="10" font-weight="700" fill="#5b636e" letter-spacing="1.1">AUTOMATED SOURCE</text>
+  <text x="60" y="142" font-size="15" font-weight="600" fill="#16191d">HubSpot Community RSS</text>
+  <text x="60" y="156" font-size="11.5" fill="#5b636e">three public feeds, once a day, no login</text>
+
+  <rect x="480" y="100" width="400" height="60" rx="8" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="500" y="122" font-size="10" font-weight="700" fill="#5b636e" letter-spacing="1.1">MANUAL SOURCE</text>
+  <text x="500" y="142" font-size="15" font-weight="600" fill="#16191d">You, through an n8n form</text>
+  <text x="500" y="156" font-size="11.5" fill="#5b636e">something you saw yourself</text>
+
+  <path d="M 240 160 L 240 186" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M 680 160 L 680 186" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Each branch has its own checks -->
+  <rect x="40" y="188" width="400" height="52" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="60" y="209" font-size="13.5" font-weight="600" fill="#16191d">Validate the feed</text>
+  <text x="60" y="227" font-size="11.5" fill="#5b636e">https, exact host, path ending .rss, no credentials</text>
+
+  <rect x="480" y="188" width="400" height="52" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="500" y="209" font-size="13.5" font-weight="600" fill="#16191d">Validate the form input</text>
+  <text x="500" y="227" font-size="11.5" fill="#5b636e">required fields, optional absolute http or https URL</text>
+
+  <path d="M 240 240 L 240 264" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- RSS-only filtering step -->
+  <rect x="40" y="266" width="400" height="52" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="60" y="287" font-size="13.5" font-weight="600" fill="#16191d">Filter before the model</text>
+  <text x="60" y="305" font-size="11.5" fill="#5b636e">recency window, RevOps keywords, per-feed cap</text>
+
+  <!-- Converge on classification -->
+  <path d="M 240 318 L 240 344 L 460 344" fill="none" stroke="#5b636e" stroke-width="1.5"/>
+  <path d="M 680 240 L 680 344 L 460 344" fill="none" stroke="#5b636e" stroke-width="1.5"/>
+  <path d="M 460 344 L 460 368" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="290" font-size="11.5" font-style="italic" fill="#5b636e">manual entries skip</text>
+  <text x="700" y="305" font-size="11.5" font-style="italic" fill="#5b636e">feed filtering</text>
+
+  <rect x="286" y="370" width="348" height="52" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="306" y="391" font-size="13.5" font-weight="600" fill="#16191d">Classify with Claude</text>
+  <text x="306" y="409" font-size="11.5" fill="#5b636e">via the Anthropic API: tier, persona, pain area, action</text>
+
+  <path d="M 460 422 L 460 452" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrowAccent)"/>
+  <text x="472" y="442" font-size="11.5" fill="#5b636e">qualified signals only</text>
+
+  <!-- Companions that write into the map -->
+  <text x="40" y="446" font-size="10" font-weight="700" fill="#5b636e" letter-spacing="1.1">WRITE INTO THE MAP</text>
+
+  <rect x="40" y="456" width="212" height="46" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="58" y="476" font-size="13" font-weight="600" fill="#16191d">04 Engagement sync</text>
+  <text x="58" y="492" font-size="11" fill="#5b636e">writes engagement state</text>
+
+  <rect x="40" y="512" width="212" height="46" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="58" y="532" font-size="13" font-weight="600" fill="#16191d">05 Draft backfill</text>
+  <text x="58" y="548" font-size="11" fill="#5b636e">reads eligible rows, writes drafts</text>
+
+  <path d="M 254 476 L 282 476" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M 254 535 L 282 535" fill="none" stroke="#5b636e" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <!-- Shared state -->
+  <rect x="286" y="454" width="348" height="106" rx="8" fill="#fff5f0" stroke="#c2410c" stroke-width="2"/>
+  <text x="306" y="477" font-size="10" font-weight="700" fill="#c2410c" letter-spacing="1.1">SHARED STATE</text>
+  <text x="306" y="500" font-size="16" font-weight="700" fill="#16191d">Notion RevOps signal map</text>
+  <text x="306" y="520" font-size="11.5" fill="#5b636e">one row per signal: warmth tier, pain area,</text>
+  <text x="306" y="536" font-size="11.5" fill="#5b636e">next action, and a draft reply</text>
+  <text x="306" y="553" font-size="11.5" font-style="italic" fill="#c2410c">all six workflows use this map</text>
+
+  <!-- Companions that report out -->
+  <text x="668" y="446" font-size="10" font-weight="700" fill="#5b636e" letter-spacing="1.1">READ THE MAP</text>
+
+  <rect x="668" y="456" width="212" height="46" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="686" y="476" font-size="13" font-weight="600" fill="#16191d">03 Stale signal nudge</text>
+  <text x="686" y="492" font-size="11" fill="#5b636e">what has gone quiet</text>
+
+  <rect x="668" y="512" width="212" height="46" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="686" y="532" font-size="13" font-weight="600" fill="#16191d">06 Weekly scorecard</text>
+  <text x="686" y="548" font-size="11" fill="#5b636e">counts against your targets</text>
+
+  <path d="M 638 476 L 664 476" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M 638 535 L 664 535" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Operator inbox -->
+  <path d="M 774 558 L 774 582" fill="none" stroke="#5b636e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="668" y="584" width="212" height="52" rx="6" fill="#ffffff" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="686" y="604" font-size="13" font-weight="600" fill="#16191d">Your own inbox</text>
+  <text x="686" y="620" font-size="11" fill="#5b636e">a digest, to the one address you</text>
+  <text x="686" y="633" font-size="11" fill="#5b636e">configure. Never anyone else.</text>
+
+  <!-- Drafts wait -->
+  <path d="M 460 560 L 460 644" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrowAccent)"/>
+  <text x="472" y="590" font-size="12" font-weight="600" fill="#c2410c">drafts wait here</text>
+  <text x="472" y="606" font-size="11.5" fill="#5b636e">nothing moves on its own</text>
+
+  <!-- Human review boundary -->
+  <line x1="40" y1="652" x2="880" y2="652" stroke="#c2410c" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="330" y="638" width="260" height="28" rx="14" fill="#ffffff" stroke="#c2410c" stroke-width="1.5"/>
+  <text x="460" y="657" font-size="12" font-weight="700" fill="#c2410c" text-anchor="middle">HUMAN REVIEW BOUNDARY</text>
+
+  <!-- Below the boundary -->
+  <rect x="40" y="682" width="840" height="58" rx="8" fill="#f7f8fa" stroke="#d5d9de" stroke-width="1.5"/>
+  <text x="62" y="706" font-size="14" font-weight="600" fill="#16191d">Only a person crosses this line. You read the draft, edit it, and post it yourself.</text>
+  <text x="62" y="727" font-size="12" fill="#5b636e">Scout never comments, connects, messages, or emails anyone in the signal map. The only mail it sends is the digest above, to you.</text>
+</svg>

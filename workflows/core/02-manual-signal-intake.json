@@ -1,0 +1,336 @@
+{
+  "name": "Scout 02 | Manual Signal Intake",
+  "nodes": [
+    {
+      "id": "e4e9ea6d-394e-5578-be7a-cd6c612de9f1",
+      "name": "Capture Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "Add a RevOps signal",
+        "formDescription": "Record something you noticed by hand. Scout classifies it and files it in your Notion signal map. Scout does not visit the link.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "URL",
+              "placeholder": "Link to the post or profile, optional"
+            },
+            {
+              "fieldLabel": "Source",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "LinkedIn post"
+                  },
+                  {
+                    "option": "LinkedIn people"
+                  },
+                  {
+                    "option": "HubSpot Community"
+                  },
+                  {
+                    "option": "Reddit"
+                  },
+                  {
+                    "option": "Job posting"
+                  },
+                  {
+                    "option": "Partner directory"
+                  },
+                  {
+                    "option": "Referral"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "What you saw",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "webhookId": "a74e59a8-205d-5661-b268-d56b0da30335"
+    },
+    {
+      "id": "f760c966-188e-5c93-a2b9-7fc47509f0f3",
+      "name": "Scout Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "02ff4361-0012-5244-b5bd-f2234f5453ed",
+              "name": "notionDatabaseId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "d3aba408-1e83-5feb-a623-79075e47d29d",
+              "name": "anthropicModel",
+              "value": "claude-haiku-4-5-20251001",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e7b8b187-5da0-50b8-9be3-56ad6989f325",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Parses an absolute http(s) URL without the `URL` global, which n8n's Code\n// node sandbox does not provide. Returns null for anything it will not vouch\n// for, so every caller can treat null as \"refuse this value\".\nfunction parseHttpUrl(value) {\n  const raw = (value === null || value === undefined ? '' : String(value)).trim();\n  if (!raw) return null;\n\n  // No spaces, tabs, newlines or control characters anywhere. A URL carrying\n  // one is either malformed or an attempt to hide a second value inside the\n  // first, and neither is worth guessing about.\n  for (let i = 0; i < raw.length; i++) {\n    const code = raw.charCodeAt(i);\n    if (code <= 0x20 || code === 0x7f) return null;\n  }\n\n  // Backslashes are rejected rather than normalised. Browsers treat a\n  // backslash as \"/\", so an authority written with one can read as a hostile\n  // host in a browser and a trusted host in a naive parser. Scout refuses the\n  // ambiguity instead of picking a side.\n  if (raw.indexOf('\\\\') !== -1) return null;\n\n  const parts = /^([A-Za-z][A-Za-z0-9+.-]*):\\/\\/([^/?#]*)([^?#]*)(\\?[^#]*)?(#[\\s\\S]*)?$/.exec(raw);\n  if (!parts) return null;\n\n  const protocol = parts[1].toLowerCase() + ':';\n  if (protocol !== 'http:' && protocol !== 'https:') return null;\n\n  const authority = parts[2];\n  if (!authority) return null;\n\n  // Split user information off the authority. Scout never sends credentials in\n  // a URL, but workflow 01 has to be able to see that someone tried.\n  let username = '';\n  let password = '';\n  let hostport = authority;\n  const at = authority.lastIndexOf('@');\n  if (at !== -1) {\n    const userinfo = authority.slice(0, at);\n    if (!userinfo) return null;\n    hostport = authority.slice(at + 1);\n    const sep = userinfo.indexOf(':');\n    username = sep === -1 ? userinfo : userinfo.slice(0, sep);\n    password = sep === -1 ? '' : userinfo.slice(sep + 1);\n  }\n  if (!hostport) return null;\n\n  // Separate an optional port so it can never be mistaken for part of the host.\n  let hostname = hostport;\n  let port = '';\n  if (hostport.charAt(0) === '[') {\n    const close = hostport.indexOf(']');\n    if (close === -1) return null;\n    hostname = hostport.slice(0, close + 1);\n    const rest = hostport.slice(close + 1);\n    if (rest) {\n      if (rest.charAt(0) !== ':') return null;\n      port = rest.slice(1);\n    }\n  } else {\n    const sep = hostport.indexOf(':');\n    if (sep !== -1) {\n      hostname = hostport.slice(0, sep);\n      port = hostport.slice(sep + 1);\n    }\n    // Only ASCII hosts are accepted. An internationalised name would need\n    // punycode conversion to compare safely, and Scout has no need of one.\n    if (!/^[A-Za-z0-9._~%-]+$/.test(hostname)) return null;\n  }\n  if (!hostname) return null;\n  if (port && !/^[0-9]+$/.test(port)) return null;\n\n  const pathname = parts[3] || '/';\n  const search = parts[4] || '';\n  const hash = parts[5] || '';\n  const host = port ? hostname + ':' + port : hostname;\n  const href = protocol + '//' + host + pathname + search + hash;\n\n  return {\n    protocol: protocol,\n    username: username,\n    password: password,\n    hostname: hostname,\n    port: port,\n    host: host,\n    pathname: pathname,\n    search: search,\n    hash: hash,\n    href: href,\n    toString: function () { return href; }\n  };\n}\n\n// VALIDATE SCOUT SETUP + FORM INPUT\n// Runs before any Anthropic or Notion request. Every message names either the\n// Scout Setup field or the form field the operator has to fix.\nconst cfg = $('Scout Setup').first().json;\nconst problems = [];\n\nconst databaseId = (cfg.notionDatabaseId || '').toString().trim();\nif (!databaseId) {\n  problems.push('notionDatabaseId is empty. Paste the id of your Notion signal map database.');\n}\n\nconst model = (cfg.anthropicModel || '').toString().trim();\nif (!model) {\n  problems.push('anthropicModel is empty. Set the Anthropic model id to classify with.');\n}\n\nif (problems.length > 0) {\n  throw new Error('Scout Setup is not configured correctly. ' + problems.join(' '));\n}\n\nconst VALID_SOURCES = [\n  'LinkedIn post', 'LinkedIn people', 'HubSpot Community',\n  'Reddit', 'Job posting', 'Partner directory', 'Referral'\n];\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const form = item.json || {};\n  const errors = [];\n\n  const name = (form['Name'] || '').toString().trim();\n  const note = (form['What you saw'] || '').toString().trim();\n  const company = (form['Company'] || '').toString().trim();\n  const rawUrl = (form['URL'] || '').toString().trim();\n  const source = (form['Source'] || '').toString().trim();\n\n  if (name.length < 2 || name.length > 200) {\n    errors.push('Name must be between 2 and 200 characters.');\n  }\n  if (note.length < 10 || note.length > 5000) {\n    errors.push('What you saw must be between 10 and 5000 characters.');\n  }\n  if (company.length > 200) {\n    errors.push('Company must be 200 characters or fewer.');\n  }\n  if (!VALID_SOURCES.includes(source)) {\n    errors.push('Source must be one of: ' + VALID_SOURCES.join(', ') + '.');\n  }\n\n  // The URL is optional. When supplied it has to be an absolute http or https\n  // URL. Scout only records it. It never fetches the page behind it, whichever\n  // platform the label names.\n  let url = '';\n  if (rawUrl) {\n    const parsed = parseHttpUrl(rawUrl);\n    if (!parsed) {\n      // Separate \"wrong scheme\" from \"not a URL\", because the two need\n      // different corrections from whoever submitted the form.\n      const hasScheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(rawUrl);\n      errors.push(hasScheme && !/^https?:/i.test(rawUrl)\n        ? 'URL must use http or https.'\n        : 'URL is not a valid absolute URL.');\n    } else {\n      url = parsed.href;\n    }\n  }\n\n  if (errors.length > 0) {\n    throw new Error('Manual signal rejected. ' + errors.join(' '));\n  }\n\n  out.push({ json: { name, note, company, url, source } });\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "484e1090-9874-5529-a02d-f4ddf2c2e246",
+      "name": "Build Claude Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// BUILD THE CLASSIFICATION REQUEST\n// One Anthropic request per submitted signal. The system prompt fixes the\n// output contract; every enum is re-checked downstream so a drifting model\n// can never write an invalid value into Notion.\nconst cfg = $('Scout Setup').first().json;\nconst model = (cfg.anthropicModel || '').toString().trim();\n\nconst SYSTEM = [\n  'You qualify inbound RevOps signals for a HubSpot data and automation consultancy.',\n  'You are given one signal that a human operator recorded by hand.',\n  'Return ONLY a JSON object, with no prose and no code fence, using exactly these keys:',\n  '{\"relevant\": boolean, \"warmth_tier\": string, \"pain_areas\": string[], \"persona_type\": string, \"track\": string, \"next_action\": string, \"best_angle\": string, \"draft\": string}',\n  'warmth_tier is one of: Tier 1 (hot), Tier 2 (warm), Tier 3 (cool), Tier 4 (cold).',\n  'pain_areas is a subset of: Routing, Lifecycle, Dedupe, Enrichment, Data quality, Reporting.',\n  'persona_type is one of: ICP buyer, ICP practitioner, Partner / consultant, Peer / networker, Unknown.',\n  'track is one of: Sales (ICP), Connector, Unknown.',\n  'next_action is one of: Comment, DM, Connect, Monitor, Ignore.',\n  'best_angle is the single most useful diagnostic question an operator could ask this person.',\n  'draft is a short message for a human to review, edit and send. Under 90 words, peer to peer, no emojis, no hashtags, no pitch and no meeting request.'\n].join('\\n');\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const s = item.json || {};\n  const userContent = [\n    'PERSON: ' + s.name,\n    'COMPANY: ' + (s.company || 'unknown'),\n    'SOURCE: ' + s.source,\n    'URL: ' + (s.url || 'not supplied'),\n    'WHAT THE OPERATOR SAW: ' + s.note\n  ].join('\\n');\n\n  out.push({ json: {\n    name: s.name,\n    company: s.company,\n    source: s.source,\n    url: s.url,\n    note: s.note,\n    _anthropicBody: {\n      model,\n      max_tokens: 700,\n      system: SYSTEM,\n      messages: [{ role: 'user', content: userContent }]\n    }\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "07b1e6ba-32f1-5e40-93d4-37551a7fceea",
+      "name": "Classify (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._anthropicBody) }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "0c18e85a-757b-5945-82b1-87a968bc9231",
+      "name": "Build Notion Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// MAP THE MODEL VERDICT ONTO THE PUBLIC NOTION SCHEMA\n// Pairs each Anthropic response with its submission by index. Unparseable or\n// out-of-enum output never blocks the row: it lands with status \"Needs review\"\n// so the operator sees the submission instead of losing it.\nconst DATABASE_ID = ($('Scout Setup').first().json.notionDatabaseId || '').toString().trim();\n\nconst VALID_TIERS = ['Tier 1 (hot)', 'Tier 2 (warm)', 'Tier 3 (cool)', 'Tier 4 (cold)'];\nconst VALID_PAIN_AREAS = ['Routing', 'Lifecycle', 'Dedupe', 'Enrichment', 'Data quality', 'Reporting'];\nconst VALID_PERSONAS = ['ICP buyer', 'ICP practitioner', 'Partner / consultant', 'Peer / networker', 'Unknown'];\nconst VALID_TRACKS = ['Sales (ICP)', 'Connector', 'Unknown'];\nconst VALID_ACTIONS = ['Comment', 'DM', 'Connect', 'Monitor', 'Ignore'];\n\n// Scout records a LinkedIn URL the operator typed, but never retrieves it.\n// Routing it to its own property keeps that distinction visible in Notion.\nconst LINKEDIN_SOURCES = ['LinkedIn post', 'LinkedIn people'];\n\nfunction cap(value) {\n  return (value === null || value === undefined ? '' : String(value)).slice(0, 1900);\n}\n\nfunction parseVerdict(response) {\n  let text = '';\n  try { text = (response.content || []).map((c) => c.text || '').join('').trim(); }\n  catch (e) { text = ''; }\n  if (!text) return null;\n  const start = text.indexOf('{');\n  const end = text.lastIndexOf('}');\n  if (start === -1 || end <= start) return null;\n  try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { return null; }\n}\n\nconst sources = $('Build Claude Request').all();\nconst inputs = $input.all();\nconst out = [];\n\nfor (let i = 0; i < inputs.length; i++) {\n  const src = (sources[i] && sources[i].json) || {};\n  const verdict = parseVerdict(inputs[i].json || {});\n\n  const properties = {\n    'Name': { title: [{ text: { content: cap(src.name || 'Manual signal') } }] },\n    'Signal': { rich_text: [{ text: { content: cap(src.note || '') } }] },\n    'Source': { select: { name: src.source } },\n    'Replied': { checkbox: false }\n  };\n\n  if (src.company) {\n    properties['Company'] = { rich_text: [{ text: { content: cap(src.company) } }] };\n  }\n  if (src.url) {\n    const key = LINKEDIN_SOURCES.includes(src.source) ? 'LinkedIn URL' : 'Source URL';\n    properties[key] = { url: src.url };\n  }\n\n  if (!verdict) {\n    properties['Warmth tier'] = { select: { name: 'Tier 4 (cold)' } };\n    properties['Persona type'] = { select: { name: 'Unknown' } };\n    properties['Track'] = { select: { name: 'Unknown' } };\n    properties['Next action'] = { select: { name: 'Monitor' } };\n    properties['Status'] = { select: { name: 'Needs review' } };\n    properties['Evidence'] = { rich_text: [{ text: { content: 'Classifier returned an unusable response. Review by hand.' } }] };\n  } else {\n    const painAreas = (Array.isArray(verdict.pain_areas) ? verdict.pain_areas : [])\n      .filter((p) => VALID_PAIN_AREAS.includes(p));\n\n    properties['Warmth tier'] = {\n      select: { name: VALID_TIERS.includes(verdict.warmth_tier) ? verdict.warmth_tier : 'Tier 4 (cold)' }\n    };\n    properties['Persona type'] = {\n      select: { name: VALID_PERSONAS.includes(verdict.persona_type) ? verdict.persona_type : 'Unknown' }\n    };\n    properties['Track'] = {\n      select: { name: VALID_TRACKS.includes(verdict.track) ? verdict.track : 'Unknown' }\n    };\n    properties['Next action'] = {\n      select: { name: VALID_ACTIONS.includes(verdict.next_action) ? verdict.next_action : 'Monitor' }\n    };\n    properties['Status'] = { select: { name: 'New' } };\n    if (painAreas.length > 0) {\n      properties['Pain area'] = { multi_select: painAreas.map((p) => ({ name: p })) };\n    }\n    if (verdict.best_angle) {\n      properties['Best angle'] = { rich_text: [{ text: { content: cap(verdict.best_angle) } }] };\n    }\n    // The draft is a suggestion. Scout writes it to Notion and stops there.\n    if (verdict.draft) {\n      properties['Draft'] = { rich_text: [{ text: { content: cap(verdict.draft) } }] };\n    }\n  }\n\n  out.push({ json: {\n    recordName: src.name,\n    needsReview: !verdict,\n    _notionBody: { parent: { database_id: DATABASE_ID }, properties }\n  }});\n}\n\nreturn out;"
+      }
+    },
+    {
+      "id": "863f20d0-2b9a-5273-9b0d-9a70c22d0f9e",
+      "name": "Create Notion Row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._notionBody) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "9d427884-129f-5659-9bf7-cd3b75e1a1d0",
+      "name": "What this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -420
+      ],
+      "parameters": {
+        "content": "## Manual signal intake\n\nAn n8n form for signals you spot yourself. You paste a link and one or\ntwo lines about what you saw. Claude qualifies it and Scout writes a\nrow into your Notion signal map.\n\nUse this when something worth tracking shows up somewhere Scout does\nnot read on its own.\n\nThe workflow ships **inactive**. Activating it publishes the form URL,\nso configure it first and only activate deliberately.",
+        "width": 640,
+        "height": 360,
+        "color": 4
+      }
+    },
+    {
+      "id": "4f138771-235f-5cee-b808-3164d38a643c",
+      "name": "Source labels are user-supplied",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -420
+      ],
+      "parameters": {
+        "content": "## Source labels are labels, not connectors\n\nThe **Source** dropdown records where *you* saw the signal. Scout does\nnot fetch, crawl, scrape, log into or monitor any of those platforms.\nNothing on this list is an integration.\n\nA LinkedIn label routes the link to the **LinkedIn URL** property so it\nstays clearly marked as something a human typed. Scout never retrieves\nit.\n\nIf the classifier returns something unusable, the row is still created\nwith status **Needs review**. Submissions are never dropped silently.",
+        "width": 640,
+        "height": 360,
+        "color": 3
+      }
+    },
+    {
+      "id": "849edbb5-50f0-5081-b9de-0cfbc09f7948",
+      "name": "Configure before running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -420
+      ],
+      "parameters": {
+        "content": "## Configure before running\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion\n   credential on **Create Notion Row**. Use HTTP Header Auth for both.\n\n**Validate Input** runs before either API call. It rejects a submission\nwhose URL is not absolute http or https, whose name is outside 2 to 200\ncharacters, or whose note is outside 10 to 5000 characters.\n\nClaude classifies and drafts. It does not send. The **Draft** property\nis a suggestion for you to edit or discard.",
+        "width": 640,
+        "height": 360,
+        "color": 5
+      }
+    }
+  ],
+  "connections": {
+    "Capture Form": {
+      "main": [
+        [
+          {
+            "node": "Scout Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scout Setup": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request": {
+      "main": [
+        [
+          {
+            "node": "Classify (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Build Notion Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notion Row": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

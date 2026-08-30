@@ -1,0 +1,8 @@
+{
+  "description": "Synthetic n8n form submission as Scout 02 receives it after the Capture Form trigger. Field names match the form field labels exactly. Entirely fictional. No real person, company or URL.",
+  "Name": "priya_revops",
+  "Company": "Meridian Freight",
+  "URL": "https://example.com/community/post-042",
+  "Source": "HubSpot Community",
+  "What you saw": "She posted that their lifecycle stage sync overwrites owner on every import, so routing sends renewals to the wrong rep. Says they rebuilt the workflow twice and it still drifts."
+}
