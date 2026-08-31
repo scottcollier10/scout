@@ -3,6 +3,20 @@
 Notable changes to Scout. This project follows semantic versioning once it has a
 first tagged release.
 
+## 0.1.1 - 2026-08-30
+
+### Changed
+
+- Rebuilt Workflow 01's canvas notes to match the current n8n Creator template
+  contract: one yellow overview with `How it works` and `Setup`, followed by
+  four neutral section notes under 50 words.
+- Recaptured the Workflow 01 canvas after a fresh n8n `2.36.8` import.
+
+Workflow 01's executable nodes, connections, settings, activation state, pin
+data, tags, and workflow name are byte-identical to v0.1.0. The behavioral
+verification below therefore carries forward; v0.1.1 adds import and visual
+verification for the documentation-only canvas change.
+
 ## 0.1.0 - 2026-08-29
 
 Initial public release.

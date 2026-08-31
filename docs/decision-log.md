@@ -780,3 +780,53 @@ by `scripts/scan-private-markers.mjs` against a list held outside every
 repository; this repository's paths, blobs, history, commit object, tags, and
 refs all return zero. No private value appears in this repository, in this
 entry, or in its commit message.
+
+### 22. Public-only sticky notes may use a throwaway authoring route
+
+**Decision.** Newly written public sticky-note text may be changed without a
+private export when the work happens in a throwaway copy outside this
+repository, passes through `scripts/sanitize-export.mjs`, and returns as a diff
+confined to sticky-note nodes. This is an extension of entry 18 for one class of
+public documentation, not a general structural-edit exception.
+
+**Why:** The n8n Creator rules changed after v0.1.0 was prepared. Workflow 01
+needed one yellow overview containing `How it works` and `Setup`, plus short
+neutral section notes grouping its executable nodes. The existing notes did not
+meet that contract. None of the replacement text comes from an operational
+workflow, a live service, or a private export, so involving the private source
+would add exposure without adding evidence.
+
+The route is allowed only when all of these controls hold:
+
+- no private export, private marker list, credential, identifier, live value,
+  or source-derived text is read or used;
+- authoring happens in a disposable copy outside the public working tree;
+- the edited workflow passes through the public sanitizer, which regenerates
+  every deterministic node id;
+- the diff is confined to sticky-note nodes, while executable nodes,
+  connections, settings, activation state, pin data, tags, and workflow name
+  remain byte-identical to v0.1.0;
+- existing sticky-note tests are updated in the same reviewed change and a
+  Workflow 01-specific test encodes the current Creator overview, section,
+  color, heading, and word-count rules;
+- the full test, validation, scanner, path, history, marker, and secret-scan
+  gates pass without a waiver, including their mutation probes;
+- the changed file is accepted by a disposable n8n `2.36.8` instance and the
+  workflow screenshot is recaptured from that inactive, credential-free copy;
+- previously observed live behavior is not re-dated or presented as rerun;
+  it carries forward only because the executable graph is unchanged;
+- the patch is released as v0.1.1 and the v0.1.0 tag and Release remain
+  immutable.
+
+**The existing debt remains.** Any private-sourced refresh or change to an
+executable node, connection, prompt, URL, credential reference, recipient,
+identifier, or non-sticky workflow parameter still requires a durable
+private-to-public authoring mechanism. This decision neither rebuilds that
+mechanism nor makes its absence acceptable for those changes.
+
+**Evidence.** The v0.1.1 test suite pins a SHA-256 digest of Workflow 01's
+executable nodes, connections, settings, and root runtime state as serialized
+in v0.1.0. A second test enforces the Creator sticky-note contract on Workflow
+01 only. The changelog and live-verification record distinguish carried-forward
+behavioral evidence from the fresh import and visual checks performed on the
+documentation-only patch.

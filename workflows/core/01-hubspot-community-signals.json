@@ -265,51 +265,83 @@
       "waitBetweenTries": 2000
     },
     {
-      "id": "7b259d0a-81a0-5585-a969-e0c2cf103672",
-      "name": "What Scout does",
+      "id": "3474c8ea-0389-5cf7-a8f2-5e8c0385f725",
+      "name": "Overview and setup",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        -400
+        -100,
+        -620
       ],
       "parameters": {
-        "content": "## What Scout does\n\nScout reads three public HubSpot Community RSS feeds once a day, keeps\nposts that mention a RevOps pain, and asks Claude to qualify each one.\n\nQualified posts become rows in a Notion signal map with a warmth tier,\na pain area, a suggested next action, and a draft reply.\n\nScout never logs in, never crawls member profiles, and never posts,\ncomments or messages anyone. Everything it writes is a suggestion for\nyou to review.",
-        "width": 640,
-        "height": 340,
-        "color": 4
+        "content": "## Scout 01 | HubSpot Community Signals\n\n### How it works\n\nScout reads three public HubSpot Community RSS feeds once a day. It validates the source list before the first request, fetches recent posts, keeps those describing a RevOps pain, removes links seen in earlier runs, and asks Claude to qualify each candidate. Qualified posts become Notion rows with a warmth tier, pain area, next action, and draft. Claude never sends anything. You review, edit, approve, or discard every suggestion.\n\n### Setup\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion credential on **Create Notion Row**. Use HTTP Header Auth for both.\n3. Adjust **lookbackHours**, **maxPostsPerFeed**, and **hubspotCommunityFeeds**.\n\nEvery feed must be an https URL on the HubSpot Community host, end in `.rss`, and contain no embedded username or password. **Validate Setup** rejects the run before **Fetch RSS** when a source is invalid.\n\nThe workflow timezone is **UTC**. Change it in workflow settings, run the workflow manually, and inspect what lands in Notion before activating the schedule.",
+        "width": 900,
+        "height": 440,
+        "color": 1
       }
     },
     {
-      "id": "fc1bdc0f-c823-5189-ad8f-0d07748e9839",
-      "name": "Configure before running",
+      "id": "25688210-c4fc-59ac-8b9e-56a74b59f96d",
+      "name": "1. Configure and validate",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        660,
-        -560
+        -100,
+        -120
       ],
       "parameters": {
-        "content": "## Configure before running\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion\n   credential on **Create Notion Row**. Use HTTP Header Auth for both.\n3. Adjust lookbackHours, maxPostsPerFeed and the feed list to taste.\n\nEvery entry in **hubspotCommunityFeeds** must be an https URL on the\nHubSpot Community host with a path ending in `.rss`, and must not\nembed a username or password. **Validate Setup** rejects the whole run\nbefore **Fetch RSS** if any entry fails, so Scout cannot be pointed at\nanother host by a typo.\n\nThis workflow ships with its timezone set to **UTC**. Change the\nworkflow timezone in workflow settings before you activate the\nschedule, or the daily run will fire at the wrong local hour.\n\nRun it manually first. Only activate the schedule once you are happy\nwith what lands in Notion.",
-        "width": 640,
-        "height": 500,
-        "color": 5
+        "content": "### 1. Configure and validate\n\nSet the database, source list, limits, timezone, and schedule in **Scout Setup**. **Validate Setup** stops the run before any request when required fields or feeds are invalid.",
+        "width": 700,
+        "height": 280,
+        "color": 7
       }
     },
     {
-      "id": "2dc894a4-a5dd-520b-8246-ac09cc2e64f2",
-      "name": "Human review boundary",
+      "id": "20f04611-6cd9-5af0-86d5-7dbe0b85a642",
+      "name": "2. Fetch and reduce",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1980,
-        -400
+        600,
+        -120
       ],
       "parameters": {
-        "content": "## Human review boundary\n\nClaude classifies and drafts. It does not send.\n\n**Create Notion Row** is the last step on purpose. Drafts land in the\nDraft property for you to edit, approve or discard.\n\nIf the model returns something unparseable, Scout writes a row with\nstatus **Needs review** holding the post title, the link and a short\nerror label. The raw model response is never stored. Nothing is\ndropped silently.",
-        "width": 640,
-        "height": 340,
-        "color": 3
+        "content": "### 2. Fetch and reduce\n\nExpand the approved feed list, fetch RSS, parse XML, keep recent RevOps posts, and remove links already seen in earlier runs.",
+        "width": 1000,
+        "height": 280,
+        "color": 7
+      }
+    },
+    {
+      "id": "57c44fd7-90b8-540b-a0b3-b10b1e5b955f",
+      "name": "3. Qualify with Claude",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        -120
+      ],
+      "parameters": {
+        "content": "### 3. Qualify with Claude\n\nBuild one compact request per candidate. Claude returns a classification, warmth tier, pain area, next action, and draft for review.",
+        "width": 500,
+        "height": 280,
+        "color": 7
+      }
+    },
+    {
+      "id": "b5fe630e-33ca-5d94-bb72-a8889e9b7b53",
+      "name": "4. Write for review",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2140,
+        -120
+      ],
+      "parameters": {
+        "content": "### 4. Write for review\n\nMap valid model output to the published Notion schema. Store the signal and draft for human review. Nothing here posts, comments, messages, or sends.",
+        "width": 500,
+        "height": 280,
+        "color": 7
       }
     }
   ],

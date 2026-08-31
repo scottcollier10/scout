@@ -183,10 +183,10 @@ describe('README makes no unsupported claim', () => {
   });
 
   test('claims no live execution, delivery, or production use', () => {
-    // A fresh n8n 2.36.8 instance accepting the JSON is earned and may be
-    // stated. Everything below is still unearned: nothing has touched Notion,
-    // Anthropic, or Gmail, no mail has been delivered, nobody has run Scout in
-    // production, and no browser has been pointed at the Editor UI.
+    // Fresh-instance acceptance, the bounded live checks recorded in
+    // live-verification.md, and Workflow 01's v0.1.1 Editor import are earned.
+    // Everything below remains unearned: no mail has been delivered, nobody
+    // has run Scout in production, and the full system is not verified.
     const UNEARNED = [
       /(tested|verified|checked) against the (notion|anthropic|gmail) api/i,
       /(notion|anthropic|gmail) api (was|has been) (called|tested|verified)/i,
@@ -196,8 +196,7 @@ describe('README makes no unsupported claim', () => {
       /(is|are) production[- ]ready/i,
       /we ran it against/i,
       /(is|has been|was) fully verified/i,
-      /end[- ]to[- ]end (test|verif)/i,
-      /(verified|tested) (in|through|via) the editor/i
+      /end[- ]to[- ]end (test|verif)/i
     ];
     // Checked line by line, because these documents have to be able to *deny*
     // each claim in words, and "No email has been sent" contains the phrase it
@@ -226,8 +225,8 @@ describe('README makes no unsupported claim', () => {
     assert.match(README, /not (yet )?been (verified|checked)|not yet verified|unverified/i);
     assert.match(
       README,
-      /Import through the Editor UI in a browser \| Not separately tested/,
-      'the README must not let instance acceptance stand in for a UI clickthrough'
+      /Import through the Editor UI in a browser \| Verified for Workflow 01 on v0\.1\.1; not separately tested for workflows 02 through 06/,
+      'the README must scope the Editor UI evidence to the workflow that was exercised'
     );
   });
 });
@@ -1219,13 +1218,20 @@ describe('examples readme', () => {
 });
 
 describe('changelog', () => {
-  test('opens at 0.1.0 with an ISO release date', () => {
-    // These two assertions previously required "Unreleased" and forbade a date,
-    // which was right while nothing had been tagged. v0.1.0 has now been tagged
-    // and released, so the changelog has to say so.
+  test('package metadata and changelog agree on v0.1.1', async () => {
+    const packageJson = JSON.parse(PACKAGE_JSON);
+    const lock = JSON.parse(await read('package-lock.json'));
+    assert.equal(packageJson.version, '0.1.1');
+    assert.equal(lock.version, packageJson.version);
+    assert.equal(lock.packages[''].version, packageJson.version);
+    assert.match(CHANGELOG, new RegExp(`^## ${packageJson.version.replaceAll('.', '\\.')}`, 'm'));
+  });
+
+  test('opens at the latest patch and preserves the original release', () => {
     const firstVersion = CHANGELOG.match(/^#{2} .*$/m);
     assert.ok(firstVersion, 'changelog needs a version heading');
-    assert.match(firstVersion[0], /^## 0\.1\.0 - \d{4}-\d{2}-\d{2}$/);
+    assert.match(firstVersion[0], /^## 0\.1\.1 - \d{4}-\d{2}-\d{2}$/);
+    assert.match(CHANGELOG, /^## 0\.1\.0 - \d{4}-\d{2}-\d{2}$/m);
   });
 
   test('no longer describes itself as unreleased or untagged', () => {
@@ -1300,7 +1306,7 @@ describe('the import verification record matches the shipped workflows', () => {
     );
   });
 
-  test('the per-workflow table matches the shipped node and connection counts', () => {
+  test('the v0.1.0 per-workflow table preserves the original import evidence', () => {
     const countLinks = (connections) => {
       let n = 0;
       for (const outputs of Object.values(connections ?? {})) {
@@ -1317,11 +1323,40 @@ describe('the import verification record matches the shipped workflows', () => {
       );
       assert.ok(row, `live-verification.md needs a row for workflow ${number}`);
       const cells = row.split('|').map((c) => c.trim());
-      assert.equal(cells[2], String(wf.nodes.length), `${file} node count`);
+      const historicalNodeCount = number === '01' ? 15 : wf.nodes.length;
+      assert.equal(cells[2], String(historicalNodeCount), `${file} historical node count`);
       assert.equal(cells[3], String(countLinks(wf.connections)), `${file} connection count`);
       assert.equal(cells[4], '`false`', `${file} must import inactive`);
       assert.equal(cells[5], 'none', `${file} must show no drift`);
     }
+  });
+
+  test('the v0.1.1 Editor UI table matches the current Workflow 01 file', () => {
+    const countLinks = (connections) => {
+      let n = 0;
+      for (const outputs of Object.values(connections ?? {})) {
+        for (const branches of Object.values(outputs ?? {})) {
+          for (const branch of branches ?? []) n += (branch ?? []).length;
+        }
+      }
+      return n;
+    };
+    const [file, workflow] = Object.entries(WORKFLOWS).find(([name]) =>
+      name.includes('/01-')
+    );
+    const section = LIVE_VERIFICATION.split('### v0.1.1 Workflow 01 Editor UI import')[1]
+      .split(/^### /m)[0];
+    const row = section.split('\n').find((line) =>
+      line.startsWith('| 01 HubSpot Community Signals |')
+    );
+    assert.ok(row, 'v0.1.1 needs a current Workflow 01 import row');
+    const cells = row.split('|').map((cell) => cell.trim());
+    assert.equal(cells[2], String(workflow.nodes.length), `${file} current node count`);
+    assert.equal(cells[3], String(countLinks(workflow.connections)), `${file} current connection count`);
+    assert.equal(cells[4], '5', `${file} sticky-note count`);
+    assert.equal(cells[5], '`false`', `${file} must import inactive`);
+    assert.equal(cells[6], 'none', `${file} must import without credentials`);
+    assert.equal(cells[7], 'none', `${file} must show no drift`);
   });
 
   test('records the pinned image by digest, not only by tag', () => {
@@ -1364,10 +1399,14 @@ describe('the import verification record matches the shipped workflows', () => {
     );
   });
 
-  test('does not claim the Editor UI was exercised', () => {
+  test('separates the historical REST import from the v0.1.1 Editor UI check', () => {
     assert.ok(
       /Browser interaction with the Editor UI was not\s+separately tested/.test(LIVE_VERIFICATION),
-      'the UI limit must be stated where the import result is claimed'
+      'the original v0.1.0 REST result must keep its historical UI limit'
+    );
+    assert.ok(
+      /### v0\.1\.1 Workflow 01 Editor UI import/.test(LIVE_VERIFICATION),
+      'the current Workflow 01 Editor UI check must be recorded separately'
     );
     assert.ok(
       /not a public API|no stability guarantee/i.test(LIVE_VERIFICATION),

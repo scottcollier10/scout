@@ -9,15 +9,16 @@ one template that does a whole job is easier to review and easier to adopt than
 six that need each other. The other five are described at the end as optional
 companions, not as part of this submission.
 
-## Submission route, as of 2026-08-28
+## Submission route and review contract, as of 2026-08-30
 
-Checked read-only on 2026-08-28:
+Checked read-only against n8n's current Creator pages on 2026-08-30:
 
 | Page | What it said |
 | --- | --- |
-| `n8n.io/workflows` | Library categories are AI, Sales, IT Ops, Marketing, Document Ops, Support, Other. A "Submit a template" call to action links to the creator hub. |
-| `n8n.io/creators` | Points creators to `creators.n8n.io` to join. Lists programme benefits, not submission mechanics. |
-| `creators.n8n.io/hub` | Redirects to an n8n-hosted Creator hub page. |
+| Creator hub | New unverified creators submit one template at a time. The Creator Dashboard accepts the workflow JSON and its description. |
+| Template submission guidelines | Use a descriptive action-led title and about 200 words covering who it is for, how it works, setup, requirements, and customization. |
+| Sticky-note guidelines | Every workflow needs one yellow top-left overview of 100 to 300 words with `How it works` and `Setup`. A workflow with four or more executable nodes also needs neutral section notes under 50 words. |
+| Creator Dashboard | The signed-out page offers sign in and creator registration. The post-login form was not opened. |
 
 Two things follow from that check.
 
@@ -25,10 +26,10 @@ Two things follow from that check.
 guidance pointed at a templates repository. That is not the current path and
 should not be used.
 
-**The exact form fields could not be read.** The Creator hub renders as an
-application that a fetch of the page cannot read, so the field list, the review
-criteria and the turnaround time are not reproduced here. They are not guessed
-at either. Read them at submission time, because they change.
+**The current review criteria are known, but the exact post-login form is not.**
+The workflow and draft copy can be prepared against the published guidelines.
+Read the form fields after Scott signs in, and do not guess at an unpublished
+field or turnaround time.
 
 ## Title
 
@@ -246,7 +247,7 @@ substitute an email.
 
 | File | What it shows |
 | --- | --- |
-| `assets/workflow-01.png` | The full workflow 01 canvas with its three sticky notes, inactive and credential-free |
+| `assets/workflow-01.png` | The full workflow 01 canvas with its Creator-compliant overview and four section notes, inactive and credential-free |
 | `assets/architecture.svg` | How the six workflows relate, and where the human review boundary sits |
 
 Both are in the repository. Neither contains a credential, an identifier, a

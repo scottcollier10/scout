@@ -37,6 +37,12 @@ sections 1 to 5 always means work is outstanding.
 - [ ] Every node id is a deterministic public template id derived from the
       workflow and node name, not an id copied from a live instance.
 - [ ] No sticky note contains a URL.
+- [ ] Workflow 01 has exactly one yellow overview of 100 to 300 words with
+      `How it works` and `Setup`, followed by neutral section notes under 50
+      words that group its executable nodes.
+- [ ] For v0.1.1, the serialized executable nodes, connections, settings,
+      activation state, pin data, tags, and workflow name match the pinned
+      v0.1.0 digest. The workflow diff is confined to sticky-note nodes.
 - [ ] All fixture and example content is synthetic. No real person, company,
       post, or address appears in `tests/` or `examples/`.
 - [ ] Structural coverage reads every tracked text file from `git ls-files`,

@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -120,15 +121,42 @@ describe('Scout 01 configuration contract', () => {
     assert.equal(byName['Create Notion Row'].waitBetweenTries, 2000);
   });
 
-  test('carries the three required sticky notes', () => {
-    const stickies = wf01.nodes
-      .filter((n) => n.type === 'n8n-nodes-base.stickyNote')
-      .map((n) => n.name);
-    assert.deepEqual(stickies.sort(), [
-      'Configure before running',
-      'Human review boundary',
-      'What Scout does'
+  test('carries the Creator overview and four section notes', () => {
+    const stickies = wf01.nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
+    assert.deepEqual(stickies.map((n) => n.name), [
+      'Overview and setup',
+      '1. Configure and validate',
+      '2. Fetch and reduce',
+      '3. Qualify with Claude',
+      '4. Write for review'
     ]);
+
+    const overview = stickies[0];
+    const overviewWords = overview.parameters.content.replace(/[#*`|]/g, '').trim().split(/\s+/);
+    assert.equal(overview.parameters.color, 1, 'the main overview must use n8n yellow');
+    assert.ok(overviewWords.length >= 100 && overviewWords.length <= 300);
+    assert.match(overview.parameters.content, /^### How it works$/m);
+    assert.match(overview.parameters.content, /^### Setup$/m);
+
+    for (const section of stickies.slice(1)) {
+      const words = section.parameters.content.replace(/[#*`|]/g, '').trim().split(/\s+/);
+      assert.equal(section.parameters.color, 7, `${section.name} must use n8n neutral grey`);
+      assert.ok(words.length < 50, `${section.name} must stay under 50 words`);
+    }
+  });
+
+  test('keeps the v0.1.0 executable workflow byte-identical', () => {
+    const executable = {
+      nodes: wf01.nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote'),
+      connections: wf01.connections,
+      settings: wf01.settings,
+      active: wf01.active,
+      pinData: wf01.pinData,
+      tags: wf01.tags,
+      name: wf01.name
+    };
+    const digest = createHash('sha256').update(JSON.stringify(executable)).digest('hex');
+    assert.equal(digest, '9167e959995a78666455984a90c9959fb1d825206502fa4aa6cb3a9f00ecd4f0');
   });
 
   test('makes no unsupported claim about the community platform', () => {
@@ -1977,20 +2005,17 @@ describe('Scout 01 sticky notes are not truncated on the canvas', () => {
     }
   });
 
-  test('the setup note carries slack, not a hairline fit', () => {
-    // Measured in a real n8n 2.36.8 canvas, this note's content rendered to
-    // scrollHeight 448 against clientHeight 338. Sitting exactly at the measured
-    // height would re-truncate the moment a word is added or a font changes.
-    const note = stickies.find((n) => n.name === 'Configure before running');
-    assert.ok(note, 'the setup note must exist');
+  test('the overview note carries rendering headroom', () => {
+    const note = stickies.find((n) => n.name === 'Overview and setup');
+    assert.ok(note, 'the overview note must exist');
     assert.ok(
-      note.parameters.height >= 470,
-      `the setup note rendered to 448px in n8n and must keep headroom above that, got ${note.parameters.height}`
+      note.parameters.height >= 440,
+      `the overview note must keep headroom for its setup instructions, got ${note.parameters.height}`
     );
   });
 
-  test('no setup instruction was removed to make the note fit', () => {
-    const note = stickies.find((n) => n.name === 'Configure before running');
+  test('the overview preserves every setup instruction', () => {
+    const note = stickies.find((n) => n.name === 'Overview and setup');
     for (const instruction of [
       'Scout Setup',
       'Notion database id',
@@ -2006,6 +2031,6 @@ describe('Scout 01 sticky notes are not truncated on the canvas', () => {
         `the setup note must still mention ${instruction}`
       );
     }
-    assert.ok(note.parameters.content.length >= 880, 'the note must not have been trimmed to fit');
+    assert.ok(note.parameters.content.length >= 1100, 'the overview must not trim required setup context');
   });
 });

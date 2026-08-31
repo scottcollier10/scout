@@ -102,7 +102,7 @@ The first workflow is the loop. Everything else feeds it or reads from it.
 | `workflows/extensions/05-draft-backfill.json` | Scout 05 \| Draft Backfill | Fill in drafts for open rows that do not have one |
 | `workflows/extensions/06-weekly-scorecard.json` | Scout 06 \| Weekly Scorecard | Email a Friday summary against targets you set |
 
-![The workflow 01 canvas in n8n: a single left-to-right chain of fifteen nodes from Daily Trigger through Scout Setup, Validate Setup, Feed URLs, Fetch RSS, Parse XML, Extract Posts, Dedupe Across Runs, Build Claude Request, Classify with Claude, Parse and Map to Notion, and Create Notion Row, with three sticky notes above it explaining what Scout does, what to configure before running, and the human review boundary.](assets/workflow-01.png)
+![The workflow 01 canvas in n8n: twelve executable nodes in one left-to-right chain, with one yellow overview and four neutral section notes explaining setup, feed reduction, Claude qualification, and the human review boundary.](assets/workflow-01.png)
 
 That is workflow 01 exactly as it imports: one linear chain, inactive, with no
 credentials bound. The two warning markers are n8n pointing out the credentials
@@ -191,7 +191,7 @@ statement is in
 
 ## Verification status
 
-Scout v0.1.0 is released, and its verification is bounded. Some of it has been
+This v0.1.1 snapshot has bounded verification. Some of it has been
 checked against live services and some of it has not, so the table below
 separates the two. A row marked as verified was observed; a row marked as not
 verified has never been run, and no verified row stands in for it. Releasing it
@@ -203,7 +203,7 @@ did not verify anything further.
 | Workflow JSON carries no credentials or private identifiers | Checked by `npm run scan` |
 | Code node behavior matches the documented behavior | Checked by `npm test` against synthetic fixtures |
 | A fresh n8n `2.36.8` instance accepts the workflow JSON | Verified for all six over `POST /rest/workflows`, with a round-trip showing no drift |
-| Import through the Editor UI in a browser | Not separately tested |
+| Import through the Editor UI in a browser | Verified for Workflow 01 on v0.1.1; not separately tested for workflows 02 through 06 |
 | Live run against HubSpot Community RSS, Notion, and Anthropic | Verified once, for workflows 01, 02, and 05 |
 | Computed digest content for workflows 03 and 06 | Verified, with nothing sent |
 | Live email delivery, and workflow 04's Gmail trigger | Not yet verified |

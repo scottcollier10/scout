@@ -264,6 +264,33 @@ connection count, and the `active` flag.
 No node came back carrying a credential binding, and no workflow came back
 active, so importing Scout cannot start a schedule on its own.
 
+### v0.1.1 Workflow 01 Editor UI import
+
+Performed on 2026-08-30 against a new disposable n8n `2.36.8` container using
+the same pinned image digest recorded above. This check used **Import from
+File** in the Editor UI, not the internal REST endpoint used for the original
+six-workflow acceptance check.
+
+The editor accepted Workflow 01, rendered all twelve executable nodes and all
+five Creator notes, and saved the workflow inactive. A readback from the
+disposable instance confirmed the following current state:
+
+| Workflow | Nodes | Connections | Sticky notes | Active after import | Credential bindings | Drift |
+| --- | --- | --- | --- | --- | --- | --- |
+| 01 HubSpot Community Signals | 17 | 11 | 5 | `false` | none | none |
+
+The executable graph was compared separately from the notes. Its twelve
+executable nodes, connections, settings, and other runtime-bearing fields are
+byte-for-byte identical to v0.1.0, with the same canonical SHA-256 digest:
+`9167e959995a78666455984a90c9959fb1d825206502fa4aa6cb3a9f00ecd4f0`.
+Only the five public sticky notes differ from the v0.1.0 file.
+
+The workflow was not executed. No RSS feed, Anthropic endpoint, Notion
+database, Gmail account, or other external service was contacted. The earlier
+live behavior evidence therefore keeps its original 2026-08-28 date and scope;
+this check establishes only Editor UI import, saved structure, and visual
+layout for the v0.1.1 documentation patch.
+
 ### The CLI import path does not work, and this is expected
 
 `n8n import:workflow --input=<file>` fails for all six with
