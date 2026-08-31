@@ -1245,6 +1245,23 @@ describe('changelog', () => {
   });
 });
 
+describe('Decision 22 keeps authoring and private-marker verification separate', () => {
+  test('forbids private marker values from the authoring route', () => {
+    assert.match(
+      DECISION_LOG,
+      /no private export,[\s\S]*private marker value enters the authoring input or diff/
+    );
+    assert.match(DECISION_LOG, /authoring\s+process never reads the external marker list/);
+  });
+
+  test('limits the external list to the post-commit scanner boundary', () => {
+    assert.match(DECISION_LOG, /post-commit marker gate is a separate verification boundary/);
+    assert.match(DECISION_LOG, /only the\s+scanner may load the owner-only external list/);
+    assert.match(DECISION_LOG, /records only its count and SHA-256 plus scope totals/);
+    assert.match(DECISION_LOG, /removed\s+by exact path immediately after the fresh-clone scan/);
+  });
+});
+
 /* ================================================================== */
 /* Private material must not reach the docs                            */
 /* ================================================================== */

@@ -798,8 +798,9 @@ would add exposure without adding evidence.
 
 The route is allowed only when all of these controls hold:
 
-- no private export, private marker list, credential, identifier, live value,
-  or source-derived text is read or used;
+- no private export, credential, identifier, live value, source-derived text,
+  or private marker value enters the authoring input or diff, and the authoring
+  process never reads the external marker list;
 - authoring happens in a disposable copy outside the public working tree;
 - the edited workflow passes through the public sanitizer, which regenerates
   every deterministic node id;
@@ -811,6 +812,10 @@ The route is allowed only when all of these controls hold:
   color, heading, and word-count rules;
 - the full test, validation, scanner, path, history, marker, and secret-scan
   gates pass without a waiver, including their mutation probes;
+- the post-commit marker gate is a separate verification boundary: only the
+  scanner may load the owner-only external list, it prints no value or fragment,
+  records only its count and SHA-256 plus scope totals, and the list is removed
+  by exact path immediately after the fresh-clone scan;
 - the changed file is accepted by a disposable n8n `2.36.8` instance and the
   workflow screenshot is recaptured from that inactive, credential-free copy;
 - previously observed live behavior is not re-dated or presented as rerun;
