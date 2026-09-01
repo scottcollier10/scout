@@ -191,7 +191,7 @@ statement is in
 
 ## Verification status
 
-This v0.1.1 snapshot has bounded verification. Some of it has been
+This v0.1.2 snapshot has bounded verification. Some of it has been
 checked against live services and some of it has not, so the table below
 separates the two. A row marked as verified was observed; a row marked as not
 verified has never been run, and no verified row stands in for it. Releasing it
@@ -203,7 +203,7 @@ did not verify anything further.
 | Workflow JSON carries no credentials or private identifiers | Checked by `npm run scan` |
 | Code node behavior matches the documented behavior | Checked by `npm test` against synthetic fixtures |
 | A fresh n8n `2.36.8` instance accepts the workflow JSON | Verified for all six over `POST /rest/workflows`, with a round-trip showing no drift |
-| Import through the Editor UI in a browser | Verified for Workflow 01 on v0.1.1; not separately tested for workflows 02 through 06 |
+| Import through the Editor UI in a browser | Verified for Workflow 01 on v0.1.2 in n8n `2.36.9`; not separately tested for workflows 02 through 06 |
 | Live run against HubSpot Community RSS, Notion, and Anthropic | Verified once, for workflows 01, 02, and 05 |
 | Computed digest content for workflows 03 and 06 | Verified, with nothing sent |
 | Live email delivery, and workflow 04's Gmail trigger | Not yet verified |

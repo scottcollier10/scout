@@ -225,7 +225,7 @@ describe('README makes no unsupported claim', () => {
     assert.match(README, /not (yet )?been (verified|checked)|not yet verified|unverified/i);
     assert.match(
       README,
-      /Import through the Editor UI in a browser \| Verified for Workflow 01 on v0\.1\.1; not separately tested for workflows 02 through 06/,
+      /Import through the Editor UI in a browser \| Verified for Workflow 01 on v0\.1\.2 in n8n `2\.36\.9`; not separately tested for workflows 02 through 06/,
       'the README must scope the Editor UI evidence to the workflow that was exercised'
     );
   });
@@ -1218,10 +1218,10 @@ describe('examples readme', () => {
 });
 
 describe('changelog', () => {
-  test('package metadata and changelog agree on v0.1.1', async () => {
+  test('package metadata and changelog agree on v0.1.2', async () => {
     const packageJson = JSON.parse(PACKAGE_JSON);
     const lock = JSON.parse(await read('package-lock.json'));
-    assert.equal(packageJson.version, '0.1.1');
+    assert.equal(packageJson.version, '0.1.2');
     assert.equal(lock.version, packageJson.version);
     assert.equal(lock.packages[''].version, packageJson.version);
     assert.match(CHANGELOG, new RegExp(`^## ${packageJson.version.replaceAll('.', '\\.')}`, 'm'));
@@ -1230,7 +1230,7 @@ describe('changelog', () => {
   test('opens at the latest patch and preserves the original release', () => {
     const firstVersion = CHANGELOG.match(/^#{2} .*$/m);
     assert.ok(firstVersion, 'changelog needs a version heading');
-    assert.match(firstVersion[0], /^## 0\.1\.1 - \d{4}-\d{2}-\d{2}$/);
+    assert.match(firstVersion[0], /^## 0\.1\.2 - \d{4}-\d{2}-\d{2}$/);
     assert.match(CHANGELOG, /^## 0\.1\.0 - \d{4}-\d{2}-\d{2}$/m);
   });
 
@@ -1374,6 +1374,25 @@ describe('the import verification record matches the shipped workflows', () => {
     assert.equal(cells[5], '`false`', `${file} must import inactive`);
     assert.equal(cells[6], 'none', `${file} must import without credentials`);
     assert.equal(cells[7], 'none', `${file} must show no drift`);
+  });
+
+  test('the v0.1.2 Creator layout table matches the current Workflow 01 file', () => {
+    const [file, workflow] = Object.entries(WORKFLOWS).find(([name]) =>
+      name.includes('/01-')
+    );
+    const section = LIVE_VERIFICATION.split('### v0.1.2 Workflow 01 Creator layout correction')[1]
+      .split(/^### /m)[0];
+    const row = section.split('\n').find((line) =>
+      line.startsWith('| 01 HubSpot Community Signals |')
+    );
+    assert.ok(row, 'v0.1.2 needs a current Workflow 01 layout row');
+    const cells = row.split('|').map((cell) => cell.trim());
+    assert.equal(cells[2], String(workflow.nodes.length), `${file} current node count`);
+    assert.equal(cells[3], '11', `${file} connection count`);
+    assert.equal(cells[4], '5', `${file} sticky-note count`);
+    assert.equal(cells[5], '`false`', `${file} must import inactive`);
+    assert.equal(cells[6], 'none', `${file} must import without credentials`);
+    assert.equal(cells[7], 'none', `${file} must show no overlap`);
   });
 
   test('records the pinned image by digest, not only by tag', () => {

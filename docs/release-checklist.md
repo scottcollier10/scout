@@ -40,9 +40,12 @@ sections 1 to 5 always means work is outstanding.
 - [ ] Workflow 01 has exactly one yellow overview of 100 to 300 words with
       `How it works` and `Setup`, followed by neutral section notes under 50
       words that group its executable nodes.
-- [ ] For v0.1.1, the serialized executable nodes, connections, settings,
+- [ ] For v0.1.2, the serialized executable nodes, connections, settings,
       activation state, pin data, tags, and workflow name match the pinned
       v0.1.0 digest. The workflow diff is confined to sticky-note nodes.
+- [ ] Workflow 01's five sticky-note rectangles do not intersect one another
+      or any executable node rectangle, and every note is tall enough for its
+      rendered content.
 - [ ] All fixture and example content is synthetic. No real person, company,
       post, or address appears in `tests/` or `examples/`.
 - [ ] Structural coverage reads every tracked text file from `git ls-files`,
@@ -183,6 +186,8 @@ Results for this section are recorded in
 
 - [x] Import into a disposable n8n `2.36.8` container succeeds for all six
       workflows, recorded with the image digest and date.
+- [x] Workflow 01 imports through the Editor UI in n8n `2.36.9`, and the
+      rendered v0.1.2 canvas shows no note-to-note or note-to-node overlap.
 - [x] A round-trip export shows no schema drift in node names, types,
       parameters, connection counts, or inactive state.
 - [x] n8n's security audit findings are recorded by category and count, with

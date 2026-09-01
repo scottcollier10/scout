@@ -835,3 +835,28 @@ in v0.1.0. A second test enforces the Creator sticky-note contract on Workflow
 01 only. The changelog and live-verification record distinguish carried-forward
 behavioral evidence from the fresh import and visual checks performed on the
 documentation-only patch.
+
+### 23. Creator notes sit above the graph instead of behind it
+
+**Decision.** Workflow 01's four section notes sit in a separate row above the
+executable nodes. The overview sits in its own row above the section notes. No
+sticky note is used as a background container for executable nodes.
+
+**Why:** n8n Creator review on the latest renderer treated the v0.1.1 section
+notes as overlapping the nodes they grouped. The layout was intentional, but
+the visual convention was ambiguous to a reviewer and harder to scan than a
+strictly separated diagram. Moving the notes above the graph keeps the same
+explanation while removing the ambiguity.
+
+This is a layout-only correction under decision 22. The patch changes only the
+five public sticky notes and the screenshot. Workflow 01's executable graph
+keeps the canonical digest
+`9167e959995a78666455984a90c9959fb1d825206502fa4aa6cb3a9f00ecd4f0`.
+No executable node, connection, setting, prompt, credential binding,
+activation state, pin data, tag, or workflow name changed.
+
+**Evidence.** A new geometry test rejects note-to-note and note-to-node
+intersections with conservative node bounds. The corrected file was imported
+through the n8n `2.36.9` Editor UI. Rendered DOM measurements showed every note
+fully visible and every pair separated, and the canvas was then inspected and
+recaptured from that inactive, credential-free copy.

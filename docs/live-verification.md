@@ -291,6 +291,36 @@ live behavior evidence therefore keeps its original 2026-08-28 date and scope;
 this check establishes only Editor UI import, saved structure, and visual
 layout for the v0.1.1 documentation patch.
 
+### v0.1.2 Workflow 01 Creator layout correction
+
+Performed on 2026-08-31 against a new disposable n8n `2.36.9` container using
+image digest
+`sha256:a9e2e3c8006ed453238266669ea1274be7136f515abe290a2f75a0ab9044c93d`.
+The workflow was loaded with **Import from File** in the Editor UI and remained
+inactive and credential-free.
+
+- Docker: client `29.6.1`, server `29.6.1`
+- Platform: `linux/arm64`
+- Node.js inside the container: `v24.18.1`
+- Reported n8n version: `2.36.9`
+
+The editor rendered all twelve executable nodes and all five Creator notes.
+Measured in the rendered canvas, every note's content height fit inside its
+container, no note intersected another note, and no note intersected an
+executable node. The section notes end above the node row with a visible gap.
+The overview ends above the section-note row with a visible gap. The full
+canvas was inspected end to end and recaptured as `assets/workflow-01.png`.
+
+| Workflow | Nodes | Connections | Sticky notes | Active after import | Credential bindings | Layout overlap |
+| --- | --- | --- | --- | --- | --- | --- |
+| 01 HubSpot Community Signals | 17 | 11 | 5 | `false` | none | none |
+
+The executable graph retains its canonical SHA-256 digest:
+`9167e959995a78666455984a90c9959fb1d825206502fa4aa6cb3a9f00ecd4f0`.
+This check was visual and structural only. The workflow was not executed, and
+no RSS, Anthropic, Notion, Gmail, or other external service was contacted.
+The earlier live behavior evidence keeps its original date and scope.
+
 ### The CLI import path does not work, and this is expected
 
 `n8n import:workflow --input=<file>` fails for all six with

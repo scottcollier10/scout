@@ -271,12 +271,12 @@
       "typeVersion": 1,
       "position": [
         -100,
-        -620
+        -720
       ],
       "parameters": {
         "content": "## Scout 01 | HubSpot Community Signals\n\n### How it works\n\nScout reads three public HubSpot Community RSS feeds once a day. It validates the source list before the first request, fetches recent posts, keeps those describing a RevOps pain, removes links seen in earlier runs, and asks Claude to qualify each candidate. Qualified posts become Notion rows with a warmth tier, pain area, next action, and draft. Claude never sends anything. You review, edit, approve, or discard every suggestion.\n\n### Setup\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion credential on **Create Notion Row**. Use HTTP Header Auth for both.\n3. Adjust **lookbackHours**, **maxPostsPerFeed**, and **hubspotCommunityFeeds**.\n\nEvery feed must be an https URL on the HubSpot Community host, end in `.rss`, and contain no embedded username or password. **Validate Setup** rejects the run before **Fetch RSS** when a source is invalid.\n\nThe workflow timezone is **UTC**. Change it in workflow settings, run the workflow manually, and inspect what lands in Notion before activating the schedule.",
-        "width": 900,
-        "height": 440,
+        "width": 1000,
+        "height": 500,
         "color": 1
       }
     },
@@ -287,12 +287,12 @@
       "typeVersion": 1,
       "position": [
         -100,
-        -120
+        -180
       ],
       "parameters": {
         "content": "### 1. Configure and validate\n\nSet the database, source list, limits, timezone, and schedule in **Scout Setup**. **Validate Setup** stops the run before any request when required fields or feeds are invalid.",
-        "width": 700,
-        "height": 280,
+        "width": 640,
+        "height": 140,
         "color": 7
       }
     },
@@ -303,12 +303,12 @@
       "typeVersion": 1,
       "position": [
         600,
-        -120
+        -180
       ],
       "parameters": {
         "content": "### 2. Fetch and reduce\n\nExpand the approved feed list, fetch RSS, parse XML, keep recent RevOps posts, and remove links already seen in earlier runs.",
         "width": 1000,
-        "height": 280,
+        "height": 140,
         "color": 7
       }
     },
@@ -319,12 +319,12 @@
       "typeVersion": 1,
       "position": [
         1700,
-        -120
+        -180
       ],
       "parameters": {
         "content": "### 3. Qualify with Claude\n\nBuild one compact request per candidate. Claude returns a classification, warmth tier, pain area, next action, and draft for review.",
-        "width": 500,
-        "height": 280,
+        "width": 460,
+        "height": 140,
         "color": 7
       }
     },
@@ -334,13 +334,13 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2140,
-        -120
+        2200,
+        -180
       ],
       "parameters": {
         "content": "### 4. Write for review\n\nMap valid model output to the published Notion schema. Store the signal and draft for human review. Nothing here posts, comments, messages, or sends.",
-        "width": 500,
-        "height": 280,
+        "width": 440,
+        "height": 140,
         "color": 7
       }
     }

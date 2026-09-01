@@ -93,7 +93,7 @@ email addresses, and does not contact anyone.
 
 ## Prerequisites
 
-- n8n `2.36.8` or compatible. Built with built-in nodes only. No community nodes.
+- n8n `2.36.9` or compatible. Built with built-in nodes only. No community nodes.
 - A Notion internal integration and one database built from the schema below.
 - An Anthropic API key.
 - Nothing else. Workflow 01 does not need Gmail.
@@ -211,12 +211,13 @@ Review saving and pruning before you activate anything.
 
 ## Verification boundaries
 
-Built and checked against n8n `2.36.8`.
+Built against n8n `2.36.8`; the submitted Workflow 01 layout was imported and
+visually checked in n8n `2.36.9` after the Creator review correction.
 
 | Checked | Not checked |
 | --- | --- |
-| A fresh `2.36.8` instance accepts the JSON | Import through the Editor UI in a browser |
-| Workflow 01 runs end to end against the real feeds, Anthropic, and Notion | Behaviour at volume, or on a day when a feed errors |
+| A fresh `2.36.8` instance accepts all six JSON files; Workflow 01 also imports through the `2.36.9` Editor UI | Behaviour at volume, or on a day when a feed errors |
+| Workflow 01 runs end to end against the real feeds, Anthropic, and Notion | Email delivery or the Workflow 04 Gmail trigger |
 | Code node logic against synthetic fixtures | Cost per run, setup duration |
 
 The `n8n import:workflow` CLI cannot read this file, because it requires a

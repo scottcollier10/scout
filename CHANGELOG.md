@@ -3,6 +3,22 @@
 Notable changes to Scout. This project follows semantic versioning once it has a
 first tagged release.
 
+## 0.1.2 - 2026-08-31
+
+### Fixed
+
+- Repositioned and resized Workflow 01's five Creator notes so no note
+  overlaps another note or an executable node in n8n `2.36.9`.
+- Added a geometry regression test that checks note-to-note and note-to-node
+  separation with conservative node bounds.
+- Recaptured the Workflow 01 canvas from the corrected, inactive,
+  credential-free import.
+
+Workflow 01's executable graph keeps the same canonical digest as v0.1.0 and
+v0.1.1. No executable node, connection, setting, prompt, credential binding,
+activation state, pin data, tag, or workflow name changed. The live behavior
+evidence therefore keeps its original date and scope.
+
 ## 0.1.1 - 2026-08-30
 
 ### Changed

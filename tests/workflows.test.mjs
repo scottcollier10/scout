@@ -2005,11 +2005,48 @@ describe('Scout 01 sticky notes are not truncated on the canvas', () => {
     }
   });
 
+  test('keeps sticky notes separate from nodes and from one another', () => {
+    const executableNodes = wf01.nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
+    const rectanglesOverlap = (a, b) => (
+      a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    );
+    const stickyRect = (note) => ({
+      left: note.position[0],
+      top: note.position[1],
+      right: note.position[0] + note.parameters.width,
+      bottom: note.position[1] + note.parameters.height
+    });
+    // The current n8n nodes are smaller than this conservative review box.
+    const nodeRect = (node) => ({
+      left: node.position[0] - 20,
+      top: node.position[1] - 20,
+      right: node.position[0] + 140,
+      bottom: node.position[1] + 140
+    });
+
+    for (let i = 0; i < stickies.length; i += 1) {
+      for (let j = i + 1; j < stickies.length; j += 1) {
+        assert.equal(
+          rectanglesOverlap(stickyRect(stickies[i]), stickyRect(stickies[j])),
+          false,
+          `sticky notes "${stickies[i].name}" and "${stickies[j].name}" must not overlap`
+        );
+      }
+      for (const node of executableNodes) {
+        assert.equal(
+          rectanglesOverlap(stickyRect(stickies[i]), nodeRect(node)),
+          false,
+          `sticky note "${stickies[i].name}" must not overlap node "${node.name}"`
+        );
+      }
+    }
+  });
+
   test('the overview note carries rendering headroom', () => {
     const note = stickies.find((n) => n.name === 'Overview and setup');
     assert.ok(note, 'the overview note must exist');
     assert.ok(
-      note.parameters.height >= 440,
+      note.parameters.height >= 500,
       `the overview note must keep headroom for its setup instructions, got ${note.parameters.height}`
     );
   });
