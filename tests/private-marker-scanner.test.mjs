@@ -224,6 +224,20 @@ describe('mutation probes: every scope is proved able to fail', () => {
     assert.deepEqual(await scopesHit(repo, [v], only('tags')), ['tags']);
   });
 
+  test('multiple annotated tags are each readable', async () => {
+    const repo = await makeRepo('p-two-tags');
+    await g(repo)(['tag', '-a', 'v1.0.0', '-m', 'first']);
+    await g(repo)(['tag', '-a', 'v1.0.1', '-m', 'second']);
+    const result = await scanRepository({
+      repo,
+      needles: needlesFor([synthetic('TWO-TAGS')]),
+      scopes: only('tags', 'refs')
+    });
+    assert.equal(result.counts.refs, 2);
+    assert.equal(result.counts.tagObjects, 2);
+    assert.equal(result.counts.unreadable, 0);
+  });
+
   test('symlinks: the stored target text is scanned', async () => {
     // Git commits a symlink as a blob whose content is the target path.
     const v = synthetic('LINKTARGET');

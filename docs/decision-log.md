@@ -860,3 +860,26 @@ intersections with conservative node bounds. The corrected file was imported
 through the n8n `2.36.9` Editor UI. Rendered DOM measurements showed every note
 fully visible and every pair separated, and the canvas was then inspected and
 recaptured from that inactive, credential-free copy.
+
+### 24. A release scan fails when any tag object is unreadable
+
+**Decision.** The private-marker scanner parses `for-each-ref` output one
+record at a time and requires every annotated tag object to be readable. A
+clean finding count is not a pass when the unreadable count is nonzero.
+
+**Why:** The v0.1.2 post-commit gate was the first run against a repository
+that already held two annotated release tags. Git places a newline between
+formatted ref records. The scanner's former flat NUL parser left that newline
+attached to the second tag name, so reading the second tag object failed. The
+scanner reported the failure and returned nonzero, which correctly blocked the
+release, but its parser was the cause.
+
+Ref names cannot contain control characters. Splitting the output into records
+first and keeping the name and type fields NUL-delimited removes the ambiguity
+without weakening any scope. A regression test creates two annotated tags and
+requires two readable tag objects and zero unreadable objects.
+
+**Evidence.** Before the correction, the real post-commit scan reported two tag
+refs, one unreadable object, and no findings. After the correction, the same
+repository and marker-file digest report both annotated tag objects read, zero
+unreadable objects, and zero findings.

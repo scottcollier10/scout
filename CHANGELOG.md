@@ -13,6 +13,9 @@ first tagged release.
   separation with conservative node bounds.
 - Recaptured the Workflow 01 canvas from the corrected, inactive,
   credential-free import.
+- Corrected the private-marker release scanner so repositories with multiple
+  annotated tags scan every tag object without treating a record newline as
+  part of the next tag name.
 
 Workflow 01's executable graph keeps the same canonical digest as v0.1.0 and
 v0.1.1. No executable node, connection, setting, prompt, credential binding,

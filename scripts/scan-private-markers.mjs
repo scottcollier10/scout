@@ -232,12 +232,21 @@ export async function scanRepository({ repo, needles, scopes }) {
   /* -------------------------------------------------------------- */
 
   if (scopes.tags || scopes.refs) {
-    const refs = splitNul(
-      await git(['for-each-ref', '--format=%(refname:short)%00%(objecttype)%00', 'refs/tags'])
-    );
-    // Records arrive as name, type, name, type ...
-    const parsed = [];
-    for (let i = 0; i + 1 < refs.length; i += 2) parsed.push({ name: refs[i], type: refs[i + 1] });
+    // Git ref names cannot contain control characters, so its record newline is
+    // safe here. Fields inside each record remain NUL-delimited. Parsing by
+    // record first prevents the newline before a second tag from becoming part
+    // of that tag's name.
+    const parsed = (await git([
+      'for-each-ref',
+      '--format=%(refname:short)%00%(objecttype)',
+      'refs/tags'
+    ]))
+      .split('\n')
+      .filter((record) => record.length > 0)
+      .map((record) => {
+        const [name, type] = record.split('\0');
+        return { name, type };
+      });
     counts.refs = parsed.length;
 
     if (scopes.refs) {

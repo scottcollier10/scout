@@ -101,6 +101,8 @@ never prints a value, a fragment, or a matching line.
       in a tracked file, in a blob after the file is deleted in a later commit,
       in a commit message, and in an annotated tag, and the scanner's output
       contains no fragment of it.
+- [ ] A repository with multiple annotated tags reports every tag object read
+      and zero unreadable objects.
 
 **This repository is the clean public snapshot,** not the private development
 archive it derives from. That archive is `scottcollier10/scout-archive-2026-08`,
