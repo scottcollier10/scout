@@ -1,5 +1,37 @@
 # Scout
 
+> ## Withdrawn: automated HubSpot Community discovery. 2026-09-16.
+>
+> **Scout v0.1's automated HubSpot Community discovery is withdrawn. Do not
+> activate workflow 01.** This is not a temporary outage and there is no
+> configuration, header, or retry that resolves it.
+>
+> HubSpot blocks the three community RSS feeds Scout reads. The requests
+> return HTTP 403 behind a Cloudflare managed challenge, and
+> `community.hubspot.com/robots.txt` disallows `/c/*.rss`, which is the exact
+> path shape workflow 01 fetches.
+>
+> **Do not activate workflow 01.** This applies to every released version:
+> `v0.1.0`, `v0.1.1`, `v0.1.2`, and current `main`. If you arrived here from the
+> n8n template library, the same applies to that listing.
+>
+> The feeds were verified working with live requests on 2026-08-28 and were
+> blocked by 2026-09-14. The robots.txt rule was not checked during the original
+> build, so whether it predated release is not known.
+>
+> Workflows 02 through 06 do not fetch these RSS feeds. They remain usable with
+> manually entered or otherwise valid signal-map data. They do not restore
+> workflow 01's automated discovery, and several of them assume signals are
+> already present in the Notion map, so the system as a whole is not
+> substantially operational without a source feeding it.
+>
+> No fix is pending. Automated HubSpot Community ingestion is withdrawn until
+> HubSpot offers a sanctioned interface for it. See
+> [source policy](docs/source-policy.md).
+>
+> This repository is kept public as an engineering record and an honest failure
+> case. It is not a currently installable product.
+
 Turn HubSpot Community questions into prioritized RevOps follow-up.
 
 Scout is a set of six n8n workflows. Once a day it reads three public HubSpot

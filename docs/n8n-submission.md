@@ -1,8 +1,14 @@
 # n8n template submission packet
 
-Draft copy for submitting **workflow 01** to the n8n template library. Nothing
-here has been submitted. No creator profile has been made and no account has
-been logged into.
+Draft copy for the **workflow 01** submission to the n8n template library.
+
+> **Correction, 2026-09-16.** This page previously said that nothing here had
+> been submitted, that no creator profile had been made, and that no account had
+> been logged into. That stopped being true on 2026-08-31, when workflow 01 was
+> published as n8n template `18942` under the creator account `scottcollier`.
+> This page was not updated at the time, so the repository asserted one thing
+> while the listing was live. The listing is being withdrawn because the feeds it
+> depends on are blocked. See the status notice in the README.
 
 The repository ships six workflows. This packet covers **workflow 01** only, because
 one template that does a whole job is easier to review and easier to adopt than

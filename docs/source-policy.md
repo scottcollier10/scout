@@ -33,7 +33,26 @@ fetched. This is enforced in code, not just documented.
   back to the original.
 - It does not follow links out of a feed to fetch anything else.
 
-## Why the boundary is here
+## Why the boundary is here (historical rationale, superseded 2026-09-14)
+
+> **This boundary no longer holds. Correction, 2026-09-16.**
+>
+> `community.hubspot.com/robots.txt` disallows `/c/*.rss` for all user agents,
+> which is the exact path shape workflow 01 fetched, and HubSpot serves a
+> Cloudflare managed challenge that returns 403 to server-side requests.
+>
+> [Adding a source later](#adding-a-source-later) below requires "a first-party
+> API or RSS interface published by the platform **for this kind of use**."
+> Applied to current evidence, the HubSpot Community category feeds fail that
+> test. Automated HubSpot Community ingestion is suspended.
+>
+> The original reasoning is kept below rather than deleted. It is what was
+> actually relied on, and removing it would hide the reversal. Note what it
+> checked and what it did not: it confirmed the feeds were published and
+> fetchable. It never asked whether fetching them was permitted.
+
+**Historical rationale, superseded on 2026-09-14. This reasoning must not be
+used to justify activating workflow 01.**
 
 HubSpot Community publishes a visible `Subscribe to RSS Feed` interface on its
 boards. Scout uses that interface the way a feed reader would: a small number of

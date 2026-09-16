@@ -212,6 +212,14 @@ second throws away the system to make the packaging simpler.
 test asserts it does not depend on any other workflow. Whether the template
 listing is accepted is unverified, because it has not been submitted.
 
+> **Correction, 2026-09-16.** The last sentence above, and "No submission has
+> been made" in the decision, were both true when written and false from
+> 2026-08-31 onward. Workflow 01 was published as n8n template `18942`. Neither
+> this entry nor `n8n-submission.md` was updated, so both continued to assert
+> that no submission existed while the listing was live. The original text is
+> left in place rather than edited, because a decision log that quietly corrects
+> itself is worth less than one that shows what was believed and when.
+
 ### 12. Retention is documented as a shared responsibility, not claimed away
 
 **Decision.** The documentation states plainly that Notion holds the durable

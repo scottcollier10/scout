@@ -271,12 +271,12 @@
       "typeVersion": 1,
       "position": [
         -100,
-        -720
+        -1000
       ],
       "parameters": {
-        "content": "## Scout 01 | HubSpot Community Signals\n\n### How it works\n\nScout reads three public HubSpot Community RSS feeds once a day. It validates the source list before the first request, fetches recent posts, keeps those describing a RevOps pain, removes links seen in earlier runs, and asks Claude to qualify each candidate. Qualified posts become Notion rows with a warmth tier, pain area, next action, and draft. Claude never sends anything. You review, edit, approve, or discard every suggestion.\n\n### Setup\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion credential on **Create Notion Row**. Use HTTP Header Auth for both.\n3. Adjust **lookbackHours**, **maxPostsPerFeed**, and **hubspotCommunityFeeds**.\n\nEvery feed must be an https URL on the HubSpot Community host, end in `.rss`, and contain no embedded username or password. **Validate Setup** rejects the run before **Fetch RSS** when a source is invalid.\n\nThe workflow timezone is **UTC**. Change it in workflow settings, run the workflow manually, and inspect what lands in Notion before activating the schedule.",
+        "content": "## WITHDRAWN 2026-09-16\n\n**Do not activate this workflow.** HubSpot blocks the community RSS feeds it\nreads. Requests return HTTP 403 behind a bot challenge, and the site's\nrobots.txt disallows these feed paths for all automated clients.\n\nThis is not a temporary outage. No header, retry, or schedule change fixes\nit. Workflow 01 cannot fetch anything. See the repository README.\n\n---\n\n## Scout 01 | HubSpot Community Signals\n\n### How it works\n\nScout reads three public HubSpot Community RSS feeds once a day. It validates the source list before the first request, fetches recent posts, keeps those describing a RevOps pain, removes links seen in earlier runs, and asks Claude to qualify each candidate. Qualified posts become Notion rows with a warmth tier, pain area, next action, and draft. Claude never sends anything. You review, edit, approve, or discard every suggestion.\n\n### Setup\n\n1. Open **Scout Setup** and paste your Notion database id.\n2. Bind an Anthropic credential on **Classify (Claude)** and a Notion credential on **Create Notion Row**. Use HTTP Header Auth for both.\n3. Adjust **lookbackHours**, **maxPostsPerFeed**, and **hubspotCommunityFeeds**.\n\nEvery feed must be an https URL on the HubSpot Community host, end in `.rss`, and contain no embedded username or password. **Validate Setup** rejects the run before **Fetch RSS** when a source is invalid.\n\nThe workflow timezone is **UTC**. Change it in workflow settings, run the workflow manually, and inspect what lands in Notion before activating the schedule.",
         "width": 1000,
-        "height": 500,
+        "height": 760,
         "color": 1
       }
     },
